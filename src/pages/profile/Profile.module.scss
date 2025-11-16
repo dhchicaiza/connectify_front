@@ -1,0 +1,154 @@
+.profilePage {
+  min-height: 100vh;
+  background-color: #111827;
+}
+
+.content {
+  padding-top: 6rem;
+  padding-bottom: 3rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.container {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.backButton {
+  color: #2dd4bf;
+  transition: color 0.3s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    color: #5eead4;
+  }
+
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.avatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background-color: #1e3a8a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatarInitials {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.875rem;
+  font-weight: bold;
+  color: #2dd4bf;
+}
+
+.formCard {
+  background-color: #1f2937;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  border: 1px solid #374151;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.formColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  label {
+    font-family: 'Poppins', sans-serif;
+    display: block;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+  }
+
+  input {
+    font-family: 'Poppins', sans-serif;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background-color: #374151;
+    color: #ffffff;
+    border-radius: 0.5rem;
+    border: 1px solid #4b5563;
+    transition: border-color 0.3s;
+
+    &:focus {
+      border-color: #2dd4bf;
+    }
+  }
+}
+
+.buttonGroup {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1.5rem;
+}
+
+.deleteButton {
+  font-family: 'Poppins', sans-serif;
+  padding: 0.75rem 1.5rem;
+  background-color: #374151;
+  color: #ffffff;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  border: 1px solid #4b5563;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: #4b5563;
+  }
+}
+
+.saveButton {
+  font-family: 'Poppins', sans-serif;
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6;
+  color: #ffffff;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: #2563eb;
+  }
+}
+

@@ -1,0 +1,242 @@
+.loginPage {
+  min-height: 100vh;
+  background-color: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
+.loginCard {
+  background-color: #1f2937;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 28rem;
+  border: 1px solid #374151;
+}
+
+.logoContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.logoWrapper {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1rem;
+}
+
+.logoGradient {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(to bottom right, #2dd4bf, #06b6d4);
+  opacity: 0.2;
+}
+
+.logoCircle {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 2px solid #2dd4bf;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logoIcon {
+  width: 32px;
+  height: 32px;
+  color: #2dd4bf;
+}
+
+.logoDot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  background-color: #2dd4bf;
+  border-radius: 50%;
+}
+
+.logoText {
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.backButton {
+  font-family: 'Poppins', sans-serif;
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1.5rem;
+  background-color: #374151;
+  color: #ffffff;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s;
+  border: 1px solid #4b5563;
+
+  &:hover {
+    background-color: #4b5563;
+    color: #2dd4bf;
+    border-color: #2dd4bf;
+  }
+}
+
+.title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.875rem;
+  font-weight: bold;
+  color: #60a5fa;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  label {
+    font-family: 'Poppins', sans-serif;
+    display: block;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+  }
+
+  input {
+    font-family: 'Poppins', sans-serif;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background-color: #374151;
+    color: #ffffff;
+    border-radius: 0.5rem;
+    border: 1px solid #4b5563;
+    transition: border-color 0.3s;
+
+    &:focus {
+      border-color: #2dd4bf;
+    }
+  }
+}
+
+.submitButton {
+  font-family: 'Poppins', sans-serif;
+  width: 100%;
+  background-color: #3b82f6;
+  color: #ffffff;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: #2563eb;
+  }
+}
+
+.forgotLink {
+  margin-top: 1rem;
+  text-align: center;
+
+  a {
+    color: #ffffff;
+    font-size: 0.875rem;
+    transition: color 0.3s;
+
+    &:hover {
+      color: #2dd4bf;
+    }
+  }
+}
+
+.divider {
+  position: relative;
+  margin: 2rem 0;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #4b5563;
+  }
+}
+
+.dividerText {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  font-size: 0.875rem;
+  padding: 0 1rem;
+  background-color: #1f2937;
+  color: #9ca3af;
+}
+
+.socialButtons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.socialButton {
+  font-family: 'Poppins', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #374151;
+  color: #ffffff;
+  border-radius: 0.5rem;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: #4b5563;
+  }
+
+  span:first-child {
+    font-size: 1.25rem;
+    font-weight: bold;
+  }
+}
+
+.registerSection {
+  margin-top: 2rem;
+  text-align: center;
+
+  p {
+    color: #ffffff;
+    margin-bottom: 1rem;
+  }
+}
+
+.registerButton {
+  font-family: 'Poppins', sans-serif;
+  display: block;
+  width: 100%;
+  background-color: #3b82f6;
+  color: #ffffff;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  text-align: center;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: #2563eb;
+  }
+}
+
