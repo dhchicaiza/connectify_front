@@ -3,6 +3,7 @@ import { useState } from "react";
 import Header from "../../components/layout/Header";
 import Alert from "../../components/common/Alert";
 import styles from "./Profile.module.scss";
+import { fetchDeleteUser } from "../../api/user";
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -31,16 +32,25 @@ const Profile: React.FC = () => {
     setShowDeleteAlert(true);
   };
 
-  const confirmDelete = () => {
-    // TODO: Implementar lógica de eliminar cuenta
-    console.log("Eliminar cuenta");
+  const confirmDelete = async () => {
+    try {
+      await fetchDeleteUser();
+
+      setTimeout(() => {
+        localStorage.removeItem("token");
+        navigate("/");
+      }, 2000);
+    } catch (error) {
+      console.error('Error deleting account:', error)
+    }
+
     setShowDeleteAlert(false);
   };
 
   return (
     <div className={styles.profilePage}>
       <Header />
-      
+
       <div className={styles.content}>
         <div className={styles.container}>
           {/* Header con flecha y avatar */}
@@ -148,4 +158,3 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
-
