@@ -1,15 +1,32 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import styles from "./Login.module.scss";
+import { fetchLoginUser } from "../../api/auth";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: Implementar lógica de login
-    console.log("Login:", { email, password });
+    
+    try {
+      const data =  await fetchLoginUser(email, password);
+
+      if (data.token) {
+        localStorage.setItem('token', data.token)
+      }
+      
+      navigate("/userhome");
+      
+    } catch (error: any) {
+      setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.")
+    }
+    
   };
 
   return (
@@ -62,6 +79,13 @@ const Login: React.FC = () => {
               required
             />
           </div>
+
+          {/* Error message */}
+          {errorMessage && (
+            <div>
+              <p>{errorMessage}</p>
+            </div>
+          )}
 
           <button type="submit" className={styles.submitButton}>
             Iniciar Sesión
