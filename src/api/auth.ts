@@ -12,7 +12,7 @@ import { API, handleApiError } from "./utils";
  */
 export async function fetchLoginUser(email: string, password: string): Promise<any> {
   try {
-    const response = await fetch(`${API}/users/login`, {
+    const response = await fetch(`${API}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
