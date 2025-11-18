@@ -1,126 +1,206 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import styles from "./Register.module.scss";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 const Register: React.FC = () => {
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    age: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [formData, setFormData] = useState({
+    // CAMBIO 1: firstName y lastName en lugar de fullName
+    firstName: "",
+    lastName: "",
+    email: "",
+    age: "",
+    password: "",
+    confirmPassword: "",
+  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implementar lógica de registro
-    console.log("Registro:", formData);
-  };
+  const navigate = useNavigate();
 
-  return (
-    <div className={styles.registerPage}>
-      <div className={styles.registerCard}>
-        <h2 className={styles.title}>Crear Cuenta</h2>
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+    setError(null);
+    setSuccessMessage(null);
+  };
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.formGroup}>
-            <label>Nombre Completo</label>
-            <input
-              type="text"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              placeholder="Juan Pérez"
-              required
-            />
-          </div>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-          <div className={styles.formGroup}>
-            <label>Correo Electrónico</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="tu@email.com"
-              required
-            />
-          </div>
+    if (formData.password !== formData.confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
 
-          <div className={styles.formGroup}>
-            <label>Edad</label>
-            <input
-              type="number"
-              name="age"
-              value={formData.age}
-              onChange={handleChange}
-              placeholder="25"
-              min="1"
-              required
-            />
-          </div>
+    // 🌟 VALIDACIÓN DE EDAD: Aseguramos que sea un número válido antes de continuar
+    const ageNumber = parseInt(formData.age, 10);
+    if (!formData.age || isNaN(ageNumber) || ageNumber < 1) {
+        setError("Por favor, introduce una edad válida (número mayor que 0).");
+        return;
+    }
+    
+    // 💡 Preparamos el payload final para enviar, incluyendo confirmPassword y age como número
+    const payloadToSend = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        age: ageNumber, // Usamos el valor numérico válido
+        password: formData.password,
+        confirmPassword: formData.confirmPassword, // ⬅️ INCLUIDO para el backend
+    };
+    
+    setIsLoading(true);
+    setError(null);
+    
+    // Console.log del JSON FINAL que se envía
+    console.log("JSON FINAL enviado al Backend:", payloadToSend);
 
-          <div className={styles.formGroup}>
-            <label>Contraseña</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-            />
-          </div>
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        // 💡 Usamos el payload completo que incluye confirmPassword y age como número
+        body: JSON.stringify(payloadToSend),
+      });
 
-          <div className={styles.formGroup}>
-            <label>Confirmar Contraseña</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-            />
-          </div>
+      const result = await response.json();
 
-          <button type="submit" className={styles.submitButton}>
-            Crear Cuenta
-          </button>
-        </form>
+      if (response.ok) {
+        setSuccessMessage(result.message || "Registro exitoso. Serás redirigido.");
+        // Redirigir al login después de un breve éxito
+        setTimeout(() => {
+          navigate('/login');
+        }, 1500);
+      } else {
+        // Manejar errores de validación del backend o errores de servidor
+        setError(result.message || "Error al registrar la cuenta. Intente de nuevo.");
+      }
+    } catch (err) {
+      // Manejar errores de red
+      setError("Error de conexión. Revise la URL de la API o la red.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        <div className={styles.divider}>
-          <div className={styles.dividerText}>O continuar con</div>
-        </div>
+  const handleSocialLogin = (provider: 'google' | 'facebook') => {
+    setError(`Pendiente de implementar: Iniciar flujo de ${provider}`);
+    // Aquí iniciarías el flujo de OAuth (usando librerías de terceros o abriendo una ventana pop-up a un endpoint del backend)
+  };
 
-        <div className={styles.socialButtons}>
-          <button type="button" className={styles.socialButton}>
-            <span>G</span>
-            <span>Google</span>
-          </button>
-          <button type="button" className={styles.socialButton}>
-            <span>f</span>
-            <span>Facebook</span>
-          </button>
-        </div>
 
-        <div className={styles.loginSection}>
-          <p>¿Ya tienes una cuenta?</p>
-          <Link to="/login" className={styles.loginButton}>
-            Iniciar Sesión
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+  return (
+    <div className={styles.registerPage}>
+      <div className={styles.registerCard}>
+        <h2 className={styles.title}>Crear Cuenta</h2>
+
+        {/* Mensajes de estado */}
+        {error && <div className={styles.alertError}>{error}</div>}
+        {successMessage && <div className={styles.alertSuccess}>{successMessage}</div>}
+
+        <form onSubmit={handleSubmit} className={styles.form}>
+          {/* Primer Nombre */}
+          <div className={styles.formGroup}>
+            <label>Nombre</label>
+            <input 
+              type="text" 
+              name="firstName" 
+              value={formData.firstName} 
+              onChange={handleChange} 
+              placeholder="Juan" 
+              required 
+            />
+          </div>
+
+          {/* Apellido */}
+          <div className={styles.formGroup}>
+            <label>Apellido</label>
+            <input 
+              type="text" 
+              name="lastName" 
+              value={formData.lastName} 
+              onChange={handleChange} 
+              placeholder="Pérez" 
+              required 
+            />
+          </div>
+
+          {/* Correo Electrónico */}
+          <div className={styles.formGroup}>
+            <label>Correo Electrónico</label>
+            <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="tu@email.com" required />
+          </div>
+
+          {/* Edad */}
+          <div className={styles.formGroup}>
+            <label>Edad</label>
+            <input type="number" name="age" value={formData.age} onChange={handleChange} placeholder="25" min="1" required />
+          </div>
+
+          {/* Contraseña */}
+          <div className={styles.formGroup}>
+            <label>Contraseña</label>
+            <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="••••••••" required />
+          </div>
+
+          {/* Confirmar Contraseña */}
+          <div className={styles.formGroup}>
+            <label>Confirmar Contraseña</label>
+            <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="••••••••" required />
+          </div>
+
+
+          <button
+            type="submit"
+            className={styles.submitButton}
+            disabled={isLoading} // Deshabilitar mientras carga
+          >
+            {isLoading ? "Registrando..." : "Crear Cuenta"}
+          </button>
+        </form>
+
+        <div className={styles.divider}>
+          <div className={styles.dividerText}>O continuar con</div>
+        </div>
+
+        <div className={styles.socialButtons}>
+          <button
+            type="button"
+            className={styles.socialButton}
+            onClick={() => handleSocialLogin('google')}
+            disabled={isLoading}
+          >
+            <span>G</span>
+            <span>Google</span>
+          </button>
+          <button
+            type="button"
+            className={styles.socialButton}
+            onClick={() => handleSocialLogin('facebook')}
+            disabled={isLoading}
+          >
+            <span>f</span>
+            <span>Facebook</span>
+          </button>
+        </div>
+
+        <div className={styles.loginSection}>
+          <p>¿Ya tienes una cuenta?</p>
+          <Link to="/login" className={styles.loginButton}>
+            Iniciar Sesión
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Register;
-
