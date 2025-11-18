@@ -6,7 +6,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
-    // CAMBIO 1: firstName y lastName en lugar de fullName
     firstName: "",
     lastName: "",
     email: "",
@@ -50,15 +49,14 @@ const Register: React.FC = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        age: ageNumber, // Usamos el valor numérico válido
+        age: ageNumber,
         password: formData.password,
-        confirmPassword: formData.confirmPassword, // ⬅️ INCLUIDO para el backend
+        confirmPassword: formData.confirmPassword, 
     };
     
     setIsLoading(true);
     setError(null);
     
-    // Console.log del JSON FINAL que se envía
     console.log("JSON FINAL enviado al Backend:", payloadToSend);
 
     try {
@@ -93,7 +91,7 @@ const Register: React.FC = () => {
 
   const handleSocialLogin = (provider: 'google' | 'facebook') => {
     setError(`Pendiente de implementar: Iniciar flujo de ${provider}`);
-    // Aquí iniciarías el flujo de OAuth (usando librerías de terceros o abriendo una ventana pop-up a un endpoint del backend)
+    
   };
 
 
