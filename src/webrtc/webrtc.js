@@ -1,5 +1,6 @@
 import Peer from "simple-peer/simplepeer.min.js";
-import io from "socket.io-client";
+// Línea a comentar: Ya no importamos la librería Socket.IO
+// import io from "socket.io-client";
 
 // URLs and credentials for WebRTC and ICE servers
 const serverWebRTCUrl = import.meta.env.VITE_WEBRTC_URL;
@@ -20,7 +21,8 @@ export const initWebRTC = async () => {
   if (Peer.WEBRTC_SUPPORT) {
     try {
       localMediaStream = await getMedia();
-      initSocketConnection();
+      // Línea a comentar: Ya no intentamos iniciar la conexión de Socket.IO
+      // initSocketConnection(); 
     } catch (error) {
       console.error("Failed to initialize WebRTC connection:", error);
     }
@@ -49,12 +51,15 @@ async function getMedia() {
  * @function initSocketConnection
  */
 function initSocketConnection() {
+  // Cuerpo de la función a comentar: Desactivamos la inicialización y los listeners
+  /*
   socket = io(serverWebRTCUrl);
 
   socket.on("introduction", handleIntroduction);
   socket.on("newUserConnected", handleNewUserConnected);
   socket.on("userDisconnected", handleUserDisconnected);
   socket.on("signal", handleSignal);
+  */
 }
 
 /**
@@ -165,9 +170,12 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
     },
   });
 
-  peerConnection.on("signal", (data) =>
-    socket.emit("signal", theirSocketId, socket.id, data)
-  );
+  // Línea a comentar: Ya no podemos emitir la señal porque 'socket' es null
+  // peerConnection.on("signal", (data) =>
+  //   socket.emit("signal", theirSocketId, socket.id, data)
+  // );
+  
+  // Las siguientes dos líneas están bien, ya que no usan 'socket'
   peerConnection.on("connect", () =>
     peerConnection.addStream(localMediaStream)
   );
@@ -183,9 +191,14 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
  * @function disableOutgoingStream
  */
 export function disableOutgoingStream() {
-  localMediaStream.getTracks().forEach((track) => {
-    track.enabled = false;
-  });
+  // Se requiere 'localMediaStream' para esto, pero 'localMediaStream'
+  // nunca se inicializará completamente si initWebRTC falla, lo cual
+  // es probable ahora. Añadimos una guardia para evitar errores de null.
+  if (localMediaStream) {
+    localMediaStream.getTracks().forEach((track) => {
+      track.enabled = false;
+    });
+  }
 }
 
 /**
@@ -193,9 +206,11 @@ export function disableOutgoingStream() {
  * @function enableOutgoingStream
  */
 export function enableOutgoingStream() {
-  localMediaStream.getTracks().forEach((track) => {
-    track.enabled = true;
-  });
+  if (localMediaStream) {
+    localMediaStream.getTracks().forEach((track) => {
+      track.enabled = true;
+    });
+  }
 }
 
 /**

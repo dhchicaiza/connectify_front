@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { socket } from "../../sockets/socketManager";
+// import { socket } from "../../sockets/socketManager";   // ⛔ Comentado: no usar socket
 
 type ChatMessage = {
   userId: string;
@@ -15,19 +15,19 @@ const Chat: React.FC = () => {
   const [messageDraft, setMessageDraft] = useState("");
 
   useEffect(() => {
-    socket.emit("newUser", usernameRef.current);
+    // socket.emit("newUser", usernameRef.current);   // ⛔ Comentado: no enviar evento
   }, []);
 
   useEffect(() => {
-    const handleIncomingMessage = (payload: ChatMessage) => {
-      setMessages(prev => [...prev, payload]);
-    };
+    // const handleIncomingMessage = (payload: ChatMessage) => {
+    //   setMessages(prev => [...prev, payload]);
+    // };
 
-    socket.on("chat:message", handleIncomingMessage);
+    // socket.on("chat:message", handleIncomingMessage);   // ⛔ Comentado: no escuchar eventos
 
-    return () => {
-      socket.off("chat:message", handleIncomingMessage);
-    };
+    // return () => {
+    //   socket.off("chat:message", handleIncomingMessage); // ⛔ Comentado
+    // };
   }, []);
 
   const handleSendMessage = (event: React.FormEvent) => {
@@ -38,10 +38,20 @@ const Chat: React.FC = () => {
       return;
     }
 
-    socket.emit("chat:message", {
-      userId: usernameRef.current,
-      message: trimmedMessage
-    });
+    // socket.emit("chat:message", {       // ⛔ Comentado: no emitir mensajes
+    //   userId: usernameRef.current,
+    //   message: trimmedMessage
+    // });
+
+    // Como no hay backend, sólo agregamos el mensaje localmente
+    setMessages(prev => [
+      ...prev,
+      {
+        userId: usernameRef.current,
+        message: trimmedMessage,
+        timestamp: new Date().toISOString()
+      }
+    ]);
 
     setMessageDraft("");
   };
