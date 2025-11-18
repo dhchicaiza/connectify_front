@@ -97,8 +97,13 @@ const Header: React.FC = () => {
           </a>
         </div>
 
-        {/* Auth Buttons */}
+        {/* Auth Buttons or User Icon */}
         <div className={styles.authButtons}>
+          {/* TODO: Mostrar userIcon cuando el usuario esté autenticado */}
+          {/* Por ahora, mostrar ambos para que funcione en todas las páginas */}
+          <Link to="/profile" className={styles.userIcon}>
+            <span>LS</span>
+          </Link>
           <Link to="/login" className={styles.loginButton}>
             Iniciar Sesión
           </Link>

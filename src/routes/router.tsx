@@ -7,6 +7,7 @@ import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import Profile from "../pages/profile/Profile";
 import UserHome from "../pages/UserHome";
+import Meeting from "../pages/meeting/Meeting";
 
 export const routes = [
     {
@@ -40,6 +41,10 @@ export const routes = [
     {
         path: "/userhome",
         element: <UserHome/>
+    },
+    {
+        path: "/meeting",
+        element: <Meeting />,
     },
 ]
 
