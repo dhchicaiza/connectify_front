@@ -9,7 +9,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const { initAuthObserver } = useAuthStore();
+  const { user, setUser, initAuthObserver } = useAuthStore();
 
   const navigate = useNavigate();
 
@@ -19,8 +19,9 @@ const Login: React.FC = () => {
     try {
       const data = await fetchLoginUser(email, password);
 
-      if (data.token) {
-        localStorage.setItem("token", data.token);
+      if (data.data.token) {
+        localStorage.setItem("token", data.data.token);
+        setUser(data.data.user);
       }
 
       navigate("/userhome");
@@ -106,8 +107,7 @@ const Login: React.FC = () => {
         </div>
 
         <div className={styles.socialButtons}>
-          
-          <ButtonGoogle setErrorMessage={setErrorMessage}/>
+          <ButtonGoogle setErrorMessage={setErrorMessage} />
 
           <button type="button" className={styles.socialButton}>
             <span>f</span>
