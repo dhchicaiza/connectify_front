@@ -1,4 +1,4 @@
-import { auth } from '../../config/firebase'; 
+import { auth } from "../../lib/firebase.config";
 import { 
     GoogleAuthProvider, 
     FacebookAuthProvider,
