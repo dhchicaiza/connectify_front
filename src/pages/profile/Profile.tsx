@@ -37,7 +37,7 @@ const Profile: React.FC = () => {
       await fetchDeleteUser();
 
       setTimeout(() => {
-        localStorage.removeItem("token");
+        localStorage.removeItem("bToken");
         navigate("/");
       }, 2000);
     } catch (error) {
