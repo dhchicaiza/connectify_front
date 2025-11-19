@@ -1,33 +1,46 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./Login.module.scss";
 import { fetchLoginUser } from "../../api/auth";
+import useAuthStore from "../../stores/useAuthStore";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const { loginWithGoogle, initAuthObserver } = useAuthStore();
 
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implementar lógica de login
-    
+
     try {
-      const data =  await fetchLoginUser(email, password);
+      const data = await fetchLoginUser(email, password);
 
       if (data.token) {
-        localStorage.setItem('token', data.token)
+        localStorage.setItem("token", data.token);
       }
-      
+
       navigate("/userhome");
-      
     } catch (error: any) {
-      setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.")
+      setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.");
     }
-    
   };
+
+  const handleLoginGoogle = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      loginWithGoogle().then(() => navigate("/userhome"));
+    } catch (error) {
+      setErrorMessage("No se pudo iniciar sesión con el servicio de Google");
+    }
+  };
+
+  useEffect(() => {
+    const unsub = initAuthObserver();
+    return () => unsub();
+  }, [initAuthObserver]);
 
   return (
     <div className={styles.loginPage}>
@@ -101,10 +114,15 @@ const Login: React.FC = () => {
         </div>
 
         <div className={styles.socialButtons}>
-          <button type="button" className={styles.socialButton}>
+          <button
+            type="button"
+            className={styles.socialButton}
+            onClick={handleLoginGoogle}
+          >
             <span>G</span>
             <span>Google</span>
           </button>
+
           <button type="button" className={styles.socialButton}>
             <span>f</span>
             <span>Facebook</span>
@@ -123,4 +141,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-
