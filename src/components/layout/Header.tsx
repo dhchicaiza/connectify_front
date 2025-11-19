@@ -2,11 +2,13 @@ import { Link, useNavigate } from "react-router-dom";
 import styles from "./Header.module.scss";
 import { useEffect, useRef, useState } from "react";
 import useAuthStore from "../../stores/useAuthStore";
+import Alert from "../common/Alert";
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout, initAuthObserver, restoreAuthFromToken } = useAuthStore();
   const [showMenu, setShowMenu] = useState<boolean>(false);
+  const [showLogoutAlert, setShowLogoutAlert] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,10 +57,20 @@ const Header: React.FC = () => {
     };
   }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setShowMenu(false);
-    await logout();
-    navigate("/");
+    setShowLogoutAlert(true);
+  };
+
+  const confirmLogout = async () => {
+    try {
+      await logout();
+      setShowLogoutAlert(false);
+      navigate("/");
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      setShowLogoutAlert(false);
+    }
   };
 
   const handleProfileClick = () => {
@@ -213,6 +225,15 @@ const Header: React.FC = () => {
           )}
         </div>
       </nav>
+
+      <Alert
+        isOpen={showLogoutAlert}
+        onClose={() => setShowLogoutAlert(false)}
+        onConfirm={confirmLogout}
+        title="Cerrar Sesión"
+        message="¿Estás seguro de que deseas cerrar sesión?"
+        type="confirm"
+      />
     </header>
   );
 };
