@@ -93,12 +93,32 @@
   gap: 1rem;
 }
 
+.userIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background-color 0.3s;
+  text-decoration: none;
+
+  &:hover {
+    background-color: #2563eb;
+  }
+}
+
 .loginButton {
   padding: 0.5rem 1rem;
   background-color: #1f2937;
   color: #ffffff;
   border-radius: 0.5rem;
   transition: background-color 0.3s;
+  text-decoration: none;
 
   &:hover {
     background-color: #374151;
@@ -111,6 +131,7 @@
   color: #ffffff;
   border-radius: 0.5rem;
   transition: background-color 0.3s;
+  text-decoration: none;
 
   &:hover {
     background-color: #0d9488;

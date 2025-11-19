@@ -4,8 +4,9 @@ import Landing from "../pages/landing/Landing";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
+import ResetPassword from "../pages/auth/ResetPassword";
 import Profile from "../pages/profile/Profile";
-import UserHome from "../pages/UserHome";
+import Meeting from "../pages/meeting/Meeting";
 
 export const routes = [
     {
@@ -29,12 +30,16 @@ export const routes = [
         element: <ForgotPassword />,
     },
     {
+        path: "/reset-password",
+        element: <ResetPassword />,
+    },
+    {
         path: "/profile",
         element: <Profile />,
     },
     {
-        path: "/userhome",
-        element: <UserHome/>
+        path: "/meeting",
+        element: <Meeting />,
     },
 ]
 
