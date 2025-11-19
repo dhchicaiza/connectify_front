@@ -49,11 +49,6 @@ export async function fetchLoginUserGoogle(idToken: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({idToken}),
   })
-
-  const text = await response.text();
-  console.log(text)
-
-  const data = await response.json();
-
-  return data;
+  
+  return response.json();
 }

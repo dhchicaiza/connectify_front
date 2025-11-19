@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import styles from "./Login.module.scss";
 import { fetchLoginUser } from "../../api/auth";
 import useAuthStore from "../../stores/useAuthStore";
+import { ButtonGoogle } from "../../components/common/ButtonGoogle";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const { loginWithGoogle, initAuthObserver } = useAuthStore();
+  const { initAuthObserver } = useAuthStore();
 
   const navigate = useNavigate();
 
@@ -25,15 +26,6 @@ const Login: React.FC = () => {
       navigate("/userhome");
     } catch (error: any) {
       setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.");
-    }
-  };
-
-  const handleLoginGoogle = (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      loginWithGoogle().then(() => navigate("/userhome"));
-    } catch (error) {
-      setErrorMessage("No se pudo iniciar sesión con el servicio de Google");
     }
   };
 
@@ -114,14 +106,8 @@ const Login: React.FC = () => {
         </div>
 
         <div className={styles.socialButtons}>
-          <button
-            type="button"
-            className={styles.socialButton}
-            onClick={handleLoginGoogle}
-          >
-            <span>G</span>
-            <span>Google</span>
-          </button>
+          
+          <ButtonGoogle setErrorMessage={setErrorMessage}/>
 
           <button type="button" className={styles.socialButton}>
             <span>f</span>
