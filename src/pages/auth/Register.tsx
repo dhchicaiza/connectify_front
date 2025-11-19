@@ -10,7 +10,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import styles from "./Register.module.scss";
 import { ButtonGoogle } from "../../components/common/ButtonGoogle";
-
+import { ButtonGit } from "../../components/common/ButtonGit";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const googleProvider = new GoogleAuthProvider();
@@ -28,6 +28,7 @@ const Register: React.FC = () => {
     confirmPassword: "",
   });
 
+  const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -241,24 +242,8 @@ const handleGoogleLogin = async () => {
         </div>
 
         <div className={styles.socialButtons}>
-          <button
-            type="button"
-            className={styles.socialButton}
-            onClick={handleGoogleLogin} 
-            disabled={isLoading}
-          >
-            <span>G</span>
-            <span>Google</span>
-          </button>
-          <button
-            type="button"
-            className={styles.socialButton}
-            onClick={() => handleGoogleLogin}
-            disabled={isLoading}
-          >
-            <span>f</span>
-            <span>Facebook</span>
-          </button>
+          <ButtonGoogle setErrorMessage={setErrorMessage} />
+          <ButtonGit setErrorMessage={setErrorMessage} />
         </div>
 
         <div className={styles.loginSection}>

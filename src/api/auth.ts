@@ -52,3 +52,13 @@ export async function fetchLoginUserGoogle(idToken: string) {
   
   return response.json();
 }
+
+export async function fetchUserGit(idToken: string) {
+  const response = await fetch(`${API}/auth/github`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({idToken}),
+  })
+  
+  return response.json();
+}

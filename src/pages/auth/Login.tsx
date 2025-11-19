@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import styles from "./Login.module.scss";
 import { fetchLoginUser } from "../../api/auth";
 import useAuthStore from "../../stores/useAuthStore";
-import { ButtonGoogle } from "../../components/common/ButtonGoogle";
+import { ButtonGoogle, } from "../../components/common/ButtonGoogle";
+import { ButtonGit, } from "../../components/common/ButtonGit";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -109,10 +110,7 @@ const Login: React.FC = () => {
         <div className={styles.socialButtons}>
           <ButtonGoogle setErrorMessage={setErrorMessage} />
 
-          <button type="button" className={styles.socialButton}>
-            <span>f</span>
-            <span>Facebook</span>
-          </button>
+          <ButtonGit setErrorMessage={setErrorMessage} />
         </div>
 
         <div className={styles.registerSection}>
