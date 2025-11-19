@@ -31,6 +31,7 @@ const Profile: React.FC = () => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [showDeleteSuccessAlert, setShowDeleteSuccessAlert] = useState(false);
   const [isSaving, setIsSaving] = useState(false); 
   const [saveMessage, setSaveMessage] = useState<string | null>(null); 
 
@@ -113,17 +114,25 @@ const Profile: React.FC = () => {
   const confirmDelete = async () => {
     try {
       await fetchDeleteUser();
-
-      setTimeout(() => {
-        localStorage.removeItem("token");
-        navigate("/");
-      }, 1000);
+      
+      // Cerrar la alerta de confirmación
+      setShowDeleteAlert(false);
+      
+      // Mostrar alerta de éxito
+      setShowDeleteSuccessAlert(true);
     } catch (error) {
-      console.error('Error deleting account:', error)
-      alert('Error al eliminar la cuenta. Inténtalo de nuevo.');
+      console.error('Error deleting account:', error);
+      setShowDeleteAlert(false);
+      setSaveMessage('Error al eliminar la cuenta. Inténtalo de nuevo.');
+      setTimeout(() => setSaveMessage(null), 4000);
     }
+  };
 
-    setShowDeleteAlert(false);
+  const handleDeleteSuccessClose = () => {
+    setShowDeleteSuccessAlert(false);
+    localStorage.removeItem("token");
+    setUser(null);
+    navigate("/");
   };
 
 
@@ -286,6 +295,14 @@ const Profile: React.FC = () => {
         }}
         title="Perfil Actualizado"
         message="Tus cambios han sido guardados exitosamente."
+        type="success"
+      />
+
+      <Alert
+        isOpen={showDeleteSuccessAlert}
+        onClose={handleDeleteSuccessClose}
+        title="Cuenta Eliminada"
+        message="Tu cuenta ha sido eliminada exitosamente. Serás redirigido a la página principal."
         type="success"
       />
     </div>
