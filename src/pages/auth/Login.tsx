@@ -21,7 +21,7 @@ const Login: React.FC = () => {
         localStorage.setItem('token', data.token)
       }
       
-      navigate("/userhome");
+      navigate("/meeting");
       
     } catch (error: any) {
       setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.")

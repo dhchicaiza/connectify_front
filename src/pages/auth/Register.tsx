@@ -1,8 +1,22 @@
+import { auth } from '../../config/firebase'; 
+import { 
+    GoogleAuthProvider, 
+    FacebookAuthProvider,
+    signInWithPopup,
+} from 'firebase/auth';
+
+import type { UserCredential as UserCredentialType } from 'firebase/auth';
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import styles from "./Register.module.scss";
 
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const googleProvider = new GoogleAuthProvider();
+const facebookProvider = new FacebookAuthProvider();
+// Register.tsx (dentro del componente React)
+
+
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -89,10 +103,67 @@ const Register: React.FC = () => {
     }
   };
 
-  const handleSocialLogin = (provider: 'google' | 'facebook') => {
-    setError(`Pendiente de implementar: Iniciar flujo de ${provider}`);
-    
-  };
+const callBackendAuth = async (firebaseUser: UserCredentialType['user']) => {
+    // 1. Obtener el ID Token seguro de Firebase
+    const idToken = await firebaseUser.getIdToken();
+    
+    // 2. Preparar el payload
+    const payloadToSend = {
+        idToken, // Token que tu backend verificará con Firebase Admin
+        // El backend usará el email y el uid del token para el login/registro
+        
+        // Incluir datos adicionales del perfil, si los tienes
+        firstName: firebaseUser.displayName?.split(' ')[0] || '',
+        lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+        email: firebaseUser.email,
+    };
+
+    // 3. Llamar a tu backend endpoint /api/auth/google
+    // Aunque se llame /google, tu backend puede manejar tanto Google como Facebook
+    const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloadToSend),
+    });
+
+    const resultFromBackend = await response.json();
+
+    if (response.ok) {
+        // Guardar el JWT propio (generado por tu backend)
+        localStorage.setItem('token', resultFromBackend.token); 
+        // Mostrar éxito y redirigir
+        // setSuccessMessage(resultFromBackend.message);
+        // navigate('/'); 
+        return true; // Éxito
+    } else {
+        // Manejar errores del backend
+        throw new Error(resultFromBackend.message || "Error del servidor al procesar el login.");
+    }
+};
+
+const handleGoogleLogin = async () => {
+    // 💡 Usar tu estado de carga/error
+    // setIsLoading(true);
+    // setError(null);
+    
+    try {
+        // 1. Iniciar sesión con Google usando el SDK de Firebase
+        const result: UserCredentialType  = await signInWithPopup(auth, googleProvider);
+
+        // 2. Llamar al backend con el usuario de Firebase
+        await callBackendAuth(result.user);
+        
+        // ... (Éxito y redirección) ...
+
+    } catch (error: any) {
+        // Manejar errores de Firebase (popup cerrado, token inválido)
+        console.error("Error en Google Sign-In:", error);
+        // setError(error.message);
+    } finally {
+        // setIsLoading(false);
+    }
+};
+
 
 
   return (
@@ -173,7 +244,7 @@ const Register: React.FC = () => {
           <button
             type="button"
             className={styles.socialButton}
-            onClick={() => handleSocialLogin('google')}
+            onClick={handleGoogleLogin} 
             disabled={isLoading}
           >
             <span>G</span>
@@ -182,7 +253,7 @@ const Register: React.FC = () => {
           <button
             type="button"
             className={styles.socialButton}
-            onClick={() => handleSocialLogin('facebook')}
+            onClick={() => handleGoogleLogin}
             disabled={isLoading}
           >
             <span>f</span>
