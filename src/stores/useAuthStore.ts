@@ -35,6 +35,18 @@ type AuthStore = {
   logout: () => Promise<void>;
 };
 
+const needsBackendProfile = (user: User | null): boolean => {
+  if (!user) {
+    return true;
+  }
+
+  const missingFirstName = !user.firstName || user.firstName.length === 0;
+  const missingLastName = !user.lastName || user.lastName.length === 0;
+  const missingAge = typeof user.age !== "number";
+
+  return missingFirstName || missingLastName || missingAge;
+};
+
 /**
  * Global auth store: keeps Firebase auth state in sync with backend data
  * and exposes helper actions (login, logout, restore session, etc.).
@@ -61,6 +73,9 @@ const useAuthStore = create<AuthStore>()((set) => ({
             // Las propiedades de perfil (firstName, etc.) quedan undefined
           };
           set({ user: userLogged });
+          if (localStorage.getItem("token")) {
+            useAuthStore.getState().restoreAuthFromToken();
+          }
         } else {
           // Si Firebase no tiene usuario, verificar si hay token en localStorage
           const token = localStorage.getItem("token");
@@ -88,9 +103,8 @@ const useAuthStore = create<AuthStore>()((set) => ({
       return;
     }
 
-    // Si ya hay un usuario en el store, no hacer nada
     const currentUser = useAuthStore.getState().user;
-    if (currentUser) {
+    if (currentUser && !needsBackendProfile(currentUser)) {
       return;
     }
 
@@ -99,10 +113,12 @@ const useAuthStore = create<AuthStore>()((set) => ({
       if (data?.data) {
         const userData = data.data;
         const restoredUser: User = {
-          email: userData.email || null,
-          displayName: userData.firstName && userData.lastName 
-            ? `${userData.firstName} ${userData.lastName}`
-            : userData.email || null,
+          ...currentUser,
+          email: userData.email || currentUser?.email || null,
+          displayName:
+            userData.firstName && userData.lastName
+              ? `${userData.firstName} ${userData.lastName}`
+              : currentUser?.displayName || userData.email || null,
           firstName: userData.firstName,
           lastName: userData.lastName,
           age: userData.age,

@@ -31,13 +31,18 @@ const Header: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Restaurar autenticación si hay token pero no usuario
-    // Solo se ejecuta cuando user cambia de null a algo o viceversa
+    // Restaurar autenticación si hay token pero faltan datos del backend
     const token = localStorage.getItem("token");
-    if (token && !user) {
+    const missingProfileData =
+      !user ||
+      !user.firstName ||
+      !user.lastName ||
+      typeof user.age !== "number";
+
+    if (token && missingProfileData) {
       restoreAuthFromToken();
     }
-  }, [user]);
+  }, [user, restoreAuthFromToken]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
