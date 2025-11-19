@@ -32,9 +32,9 @@ const ForgotPassword: React.FC = () => {
 
       if (response.ok) {
         // Éxito (Recuerda que el backend siempre devuelve 202 para seguridad)
+        // Siempre mostrar mensaje en español, independientemente de lo que devuelva el backend
         setMessage(
-          result.message || 
-          "Si la cuenta existe, hemos enviado un enlace de recuperación a tu correo."
+          "Si existe una cuenta con este correo electrónico, se ha enviado un enlace para restablecer la contraseña."
         );
          setEmail(""); 
 

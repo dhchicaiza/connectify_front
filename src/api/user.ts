@@ -91,13 +91,14 @@ export async function fetchDeleteUser(): Promise<any> {
 }
 
 // Define la estructura de los datos que se pueden enviar para la actualización
-// La contraseña se incluye opcionalmente.
+// La contraseña se incluye opcionalmente, pero requiere currentPassword cuando se cambia.
 interface UpdateUserData {
   firstName?: string;
   lastName?: string;
   age?: number | string; 
   email?: string;
   password?: string;
+  currentPassword?: string;
 }
 
 /**

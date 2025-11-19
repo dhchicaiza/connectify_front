@@ -11,6 +11,7 @@ interface FormData {
   lastName: string;
   age: string;
   email: string;
+  currentPassword: string;
   password: string; 
 }
 
@@ -19,6 +20,7 @@ const initialFormData: FormData = {
   lastName: "",
   age: "",
   email: "",
+  currentPassword: "",
   password: "",
 };
 
@@ -40,6 +42,7 @@ const Profile: React.FC = () => {
         lastName: user.lastName || '',
         age: user.age ? String(user.age) : '', 
         email: user.email || '',
+        currentPassword: "",
         password: "", 
       }));
     } else {
@@ -58,13 +61,29 @@ const Profile: React.FC = () => {
     setSaveMessage(null);
     setIsSaving(true);
     
-    const dataToSend = {
+    // Construir el objeto de datos a enviar
+    const dataToSend: any = {
       firstName: formData.firstName,
       lastName: formData.lastName,
-      ...(formData.age && { age: Number(formData.age) }),
       email: formData.email,
-      ...(formData.password && { password: formData.password }),
     };
+
+    // Incluir edad solo si tiene valor
+    if (formData.age && formData.age.trim() !== "") {
+      dataToSend.age = Number(formData.age);
+    }
+
+
+    if (formData.password && formData.password.trim() !== "") {
+      if (!formData.currentPassword || formData.currentPassword.trim() === "") {
+        setSaveMessage("Debes ingresar tu contraseña actual para cambiar la contraseña");
+        setIsSaving(false);
+        setTimeout(() => setSaveMessage(null), 4000);
+        return;
+      }
+      dataToSend.password = formData.password;
+      dataToSend.currentPassword = formData.currentPassword;
+    }
 
     try {
       const response = await fetchUpdateUser(dataToSend);
@@ -73,7 +92,9 @@ const Profile: React.FC = () => {
         setUser(response.data.user); 
       }
       
-      setFormData(prev => ({ ...prev, password: "" }));
+      // Limpiar las contraseñas después de guardar exitosamente
+      setFormData(prev => ({ ...prev, currentPassword: "", password: "" }));
+      setIsSaving(false);
       setShowSuccessAlert(true);
 
     } catch (error: any) {
@@ -189,7 +210,19 @@ const Profile: React.FC = () => {
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label>Contraseña</label>
+                    <label>Contraseña Actual</label>
+                    <input
+                      type="password"
+                      name="currentPassword"
+                      value={formData.currentPassword}
+                      onChange={handleChange}
+                      placeholder="••••••••"
+                    />
+                    
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Nueva Contraseña</label>
                     <input
                       type="password"
                       name="password"
@@ -197,6 +230,9 @@ const Profile: React.FC = () => {
                       onChange={handleChange}
                       placeholder="••••••••"
                     />
+                    <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                      Deja vacío si no deseas cambiar la contraseña
+                    </small>
                   </div>
                 </div>
               </div>
