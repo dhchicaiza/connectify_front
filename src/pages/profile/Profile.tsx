@@ -8,7 +8,8 @@ import { fetchDeleteUser } from "../../api/user";
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    fullName: "",
+    firstName: "",
+    lastName: "",
     age: "",
     email: "",
     password: "",
@@ -78,11 +79,22 @@ const Profile: React.FC = () => {
                 {/* Columna Izquierda */}
                 <div className={styles.formColumn}>
                   <div className={styles.formGroup}>
-                    <label>Nombre Completo</label>
+                    <label>Nombre</label>
                     <input
                       type="text"
-                      name="fullName"
-                      value={formData.fullName}
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      placeholder="Juan Pérez"
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Apellido</label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
                       onChange={handleChange}
                       placeholder="Juan Pérez"
                     />
