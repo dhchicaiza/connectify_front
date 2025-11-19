@@ -76,3 +76,43 @@
   }
 }
 
+.successCard {
+  border-color: #2dd4bf;
+  background-color: #1f2937;
+}
+
+.successIcon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: linear-gradient(to bottom right, rgba(45, 212, 191, 0.2), rgba(6, 182, 212, 0.2));
+  color: #2dd4bf;
+
+  svg {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+.successButton {
+  font-family: 'Poppins', sans-serif;
+  padding: 0.75rem 1.5rem;
+  background-color: #14b8a6;
+  color: #ffffff;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.3s;
+  cursor: pointer;
+  border: 1px solid #2dd4bf;
+
+  &:hover {
+    background-color: #0d9488;
+    border-color: #2dd4bf;
+    box-shadow: 0 0 10px rgba(45, 212, 191, 0.3);
+  }
+}
+

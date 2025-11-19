@@ -17,7 +17,17 @@ const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 
 
+import Alert from "../../components/common/Alert";
 
+
+// Register.tsx (dentro del componente React)
+
+
+
+/**
+ * Registration page that handles email/password sign-up
+ * and provides a Google onboarding alternative.
+ */
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     firstName: "",
@@ -32,9 +42,13 @@ const Register: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
-  const navigate = useNavigate();
+  const navigate = useNavigate();
 
+  /**
+   * Keeps the form state in sync with the input fields.
+   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -44,6 +58,9 @@ const Register: React.FC = () => {
     setSuccessMessage(null);
   };
 
+  /**
+   * Sends the registration payload to the backend REST API.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -86,13 +103,9 @@ const Register: React.FC = () => {
 
       const result = await response.json();
 
-      if (response.ok) {
-        setSuccessMessage(result.message || "Registro exitoso. Serás redirigido.");
-        // Redirigir al login después de un breve éxito
-        setTimeout(() => {
-          navigate('/login');
-        }, 1500);
-      } else {
+      if (response.ok) {
+        setShowSuccessAlert(true);
+      } else {
         // Manejar errores de validación del backend o errores de servidor
         setError(result.message || "Error al registrar la cuenta. Intente de nuevo.");
       }
@@ -104,6 +117,10 @@ const Register: React.FC = () => {
     }
   };
 
+/**
+ * Completes the Google authentication flow by exchanging
+ * the Firebase token with the backend server.
+ */
 const callBackendAuth = async (firebaseUser: UserCredentialType['user']) => {
     // 1. Obtener el ID Token seguro de Firebase
     const idToken = await firebaseUser.getIdToken();
@@ -142,6 +159,10 @@ const callBackendAuth = async (firebaseUser: UserCredentialType['user']) => {
     }
 };
 
+/**
+ * Handles the Google OAuth button click by triggering the
+ * Firebase popup and forwarding the identity to the backend.
+ */
 const handleGoogleLogin = async () => {
     // 💡 Usar tu estado de carga/error
     // setIsLoading(true);
@@ -246,15 +267,26 @@ const handleGoogleLogin = async () => {
           <ButtonGit setErrorMessage={setErrorMessage} />
         </div>
 
-        <div className={styles.loginSection}>
-          <p>¿Ya tienes una cuenta?</p>
-          <Link to="/login" className={styles.loginButton}>
-            Iniciar Sesión
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+        <div className={styles.loginSection}>
+          <p>¿Ya tienes una cuenta?</p>
+          <Link to="/login" className={styles.loginButton}>
+            Iniciar Sesión
+          </Link>
+        </div>
+      </div>
+
+      <Alert
+        isOpen={showSuccessAlert}
+        onClose={() => {
+          setShowSuccessAlert(false);
+          navigate('/login');
+        }}
+        title="Registro Exitoso"
+        message="Tu cuenta ha sido creada correctamente. Serás redirigido al inicio de sesión."
+        type="success"
+      />
+    </div>
+  );
 };
 
 export default Register;

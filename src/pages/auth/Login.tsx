@@ -3,17 +3,26 @@ import { useEffect, useState } from "react";
 import styles from "./Login.module.scss";
 import { fetchLoginUser } from "../../api/auth";
 import useAuthStore from "../../stores/useAuthStore";
-import { ButtonGoogle, } from "../../components/common/ButtonGoogle";
 import { ButtonGit, } from "../../components/common/ButtonGit";
+import { ButtonGoogle } from "../../components/common/ButtonGoogle";
+import Alert from "../../components/common/Alert";
 
+/**
+ * Login page that supports email/password authentication,
+ * Google OAuth and displays success/error alerts.
+ */
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const { user, setUser, initAuthObserver } = useAuthStore();
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
   const navigate = useNavigate();
 
+  /**
+   * Handles the classic email/password login form submission.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -23,9 +32,8 @@ const Login: React.FC = () => {
       if (data.data.token) {
         localStorage.setItem("token", data.data.token);
         setUser(data.data.user);
+        setShowSuccessAlert(true);
       }
-
-      navigate("/meeting");
     } catch (error: any) {
       setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.");
     }
@@ -108,7 +116,10 @@ const Login: React.FC = () => {
         </div>
 
         <div className={styles.socialButtons}>
-          <ButtonGoogle setErrorMessage={setErrorMessage} />
+          <ButtonGoogle 
+            setErrorMessage={setErrorMessage}
+            onSuccess={() => setShowSuccessAlert(true)}
+          />
 
           <ButtonGit setErrorMessage={setErrorMessage} />
         </div>
@@ -120,6 +131,17 @@ const Login: React.FC = () => {
           </Link>
         </div>
       </div>
+
+      <Alert
+        isOpen={showSuccessAlert}
+        onClose={() => {
+          setShowSuccessAlert(false);
+          navigate("/meeting");
+        }}
+        title="Inicio Exitoso"
+        message="Has iniciado sesión correctamente. Bienvenido de nuevo."
+        type="success"
+      />
     </div>
   );
 };

@@ -9,8 +9,7 @@ const Meeting: React.FC = () => {
   const navigate = useNavigate();
 
   const handleNewMeeting = () => {
-    console.log("Crear nueva reunión");
-    navigate("/home");
+    navigate("/active-meeting");
   };
 
   const handleJoinRoom = (e: React.FormEvent) => {
@@ -22,7 +21,7 @@ const Meeting: React.FC = () => {
     }
 
     console.log("Unirse a la sala:", roomId);
-    navigate("/home");
+    navigate("/active-meeting");
   };
 
   return (
@@ -109,4 +108,3 @@ const Meeting: React.FC = () => {
 };
 
 export default Meeting;
-

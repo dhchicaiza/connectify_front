@@ -16,6 +16,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ["events", "util", "process"],
+    include: ["events", "util", "process", "firebase/auth", "firebase/app", "firebase/firestore"],
   },
 });

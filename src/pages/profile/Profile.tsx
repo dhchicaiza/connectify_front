@@ -11,6 +11,7 @@ interface FormData {
   lastName: string;
   age: string;
   email: string;
+  currentPassword: string;
   password: string; 
 }
 
@@ -19,15 +20,22 @@ const initialFormData: FormData = {
   lastName: "",
   age: "",
   email: "",
+  currentPassword: "",
   password: "",
 };
 
+/**
+ * Displays and manages the authenticated user's profile,
+ * allowing updates, password changes and account deletion.
+ */
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { user, setUser } = useAuthStore(); 
   
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [showDeleteSuccessAlert, setShowDeleteSuccessAlert] = useState(false);
   const [isSaving, setIsSaving] = useState(false); 
   const [saveMessage, setSaveMessage] = useState<string | null>(null); 
 
@@ -39,6 +47,7 @@ const Profile: React.FC = () => {
         lastName: user.lastName || '',
         age: user.age ? String(user.age) : '', 
         email: user.email || '',
+        currentPassword: "",
         password: "", 
       }));
     } else {
@@ -58,32 +67,57 @@ const Profile: React.FC = () => {
     setSaveMessage(null);
     setIsSaving(true);
     
-    const dataToSend = {
+    // Construir el objeto de datos a enviar
+    const dataToSend: any = {
       firstName: formData.firstName,
       lastName: formData.lastName,
-      ...(formData.age && { age: Number(formData.age) }),
       email: formData.email,
-      ...(formData.password && { password: formData.password }),
     };
+
+    // Incluir edad solo si tiene valor
+    if (formData.age && formData.age.trim() !== "") {
+      dataToSend.age = Number(formData.age);
+    }
+
+
+    if (formData.password && formData.password.trim() !== "") {
+      if (!formData.currentPassword || formData.currentPassword.trim() === "") {
+        setSaveMessage("Debes ingresar tu contraseña actual para cambiar la contraseña");
+        setIsSaving(false);
+        setTimeout(() => setSaveMessage(null), 4000);
+        return;
+      }
+      dataToSend.password = formData.password;
+      dataToSend.currentPassword = formData.currentPassword;
+    }
 
     try {
       const response = await fetchUpdateUser(dataToSend);
       
       if (response.data.user) {
-        setUser(response.data.user); 
+        const userData = response.data.user;
+        setUser({
+          email: userData.email || null,
+          displayName: userData.firstName && userData.lastName 
+            ? `${userData.firstName} ${userData.lastName}`
+            : userData.email || null,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          age: userData.age,
+        }); 
       }
       
-      setSaveMessage("Cambios guardados exitosamente. 🎉");
-      
-      setFormData(prev => ({ ...prev, password: "" }));
+      // Limpiar las contraseñas después de guardar exitosamente
+      setFormData(prev => ({ ...prev, currentPassword: "", password: "" }));
+      setIsSaving(false);
+      setShowSuccessAlert(true);
 
     } catch (error: any) {
       console.error("Error al guardar cambios:", error);
       const message = error.message || "Error al guardar cambios. Por favor, verifica tus datos.";
       setSaveMessage(message);
-    } finally {
       setIsSaving(false);
-      setTimeout(() => setSaveMessage(null), 4000); 
+      setTimeout(() => setSaveMessage(null), 4000);
     }
   };
 
@@ -91,20 +125,35 @@ const Profile: React.FC = () => {
     setShowDeleteAlert(true);
   };
 
+  /**
+   * Executes the account deletion flow after user confirmation.
+   */
   const confirmDelete = async () => {
     try {
       await fetchDeleteUser();
-
-      setTimeout(() => {
-        localStorage.removeItem("token");
-        navigate("/");
-      }, 1000);
+      
+      // Cerrar la alerta de confirmación
+      setShowDeleteAlert(false);
+      
+      // Mostrar alerta de éxito
+      setShowDeleteSuccessAlert(true);
     } catch (error) {
-      console.error('Error deleting account:', error)
-      alert('Error al eliminar la cuenta. Inténtalo de nuevo.');
+      console.error('Error deleting account:', error);
+      setShowDeleteAlert(false);
+      setSaveMessage('Error al eliminar la cuenta. Inténtalo de nuevo.');
+      setTimeout(() => setSaveMessage(null), 4000);
     }
+  };
 
-    setShowDeleteAlert(false);
+  /**
+   * Handles the dismissal of the deletion success alert,
+   * ensuring the session is cleaned up before redirecting home.
+   */
+  const handleDeleteSuccessClose = async () => {
+    setShowDeleteSuccessAlert(false);
+    const { logout } = useAuthStore.getState();
+    await logout();
+    navigate("/");
   };
 
 
@@ -191,7 +240,19 @@ const Profile: React.FC = () => {
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label>Contraseña</label>
+                    <label>Contraseña Actual</label>
+                    <input
+                      type="password"
+                      name="currentPassword"
+                      value={formData.currentPassword}
+                      onChange={handleChange}
+                      placeholder="••••••••"
+                    />
+                    
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Nueva Contraseña</label>
                     <input
                       type="password"
                       name="password"
@@ -199,6 +260,9 @@ const Profile: React.FC = () => {
                       onChange={handleChange}
                       placeholder="•••••••• (dejar vacío para no cambiar)"
                     />
+                    <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                      Deja vacío si no deseas cambiar la contraseña
+                    </small>
                   </div>
                 </div>
               </div>
@@ -242,6 +306,25 @@ const Profile: React.FC = () => {
         title="Eliminar Cuenta"
         message="¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer."
         type="confirm"
+      />
+
+      <Alert
+        isOpen={showSuccessAlert}
+        onClose={() => {
+          setShowSuccessAlert(false);
+          setIsSaving(false);
+        }}
+        title="Perfil Actualizado"
+        message="Tus cambios han sido guardados exitosamente."
+        type="success"
+      />
+
+      <Alert
+        isOpen={showDeleteSuccessAlert}
+        onClose={handleDeleteSuccessClose}
+        title="Cuenta Eliminada"
+        message="Tu cuenta ha sido eliminada exitosamente. Serás redirigido a la página principal."
+        type="success"
       />
     </div>
   );

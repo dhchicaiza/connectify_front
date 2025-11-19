@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { initWebRTC } from "../../webrtc/webrtc";
 /**
- * Component for controlling voice input/output.
- * @returns {JSX.Element} The JSX.Element containing the voice control button.
+ * Simple voice control UI that toggles microphone state
+ * and initiates the WebRTC flow the first time the user speaks.
  */
 export default function Voice() {
   const [isSpeaking, setIsSpeaking] = useState(false); // State to track if the user is speaking
