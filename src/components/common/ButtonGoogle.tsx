@@ -12,10 +12,11 @@ export const ButtonGoogle: React.FC<ButtonGoogleProps> = (
   const { loginWithGoogle } = useAuthStore();
   const navigate = useNavigate();
 
-  const handleLoginGoogle = (e: React.FormEvent) => {
+  const handleLoginGoogle = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      loginWithGoogle().then(() => navigate("/userhome"));
+      await loginWithGoogle();
+      navigate("/userhome")
     } catch (error) {
       setErrorMessage("No se pudo iniciar sesión con el servicio de Google");
     }

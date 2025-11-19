@@ -50,5 +50,9 @@ export async function fetchLoginUserGoogle(idToken: string) {
     body: JSON.stringify({idToken}),
   })
   
+  if (!response.ok) {
+    handleApiError({response: response, location: "fetchLoginUserGoogle"})
+  }
+  
   return response.json();
 }

@@ -4,12 +4,14 @@ import styles from "./Login.module.scss";
 import { fetchLoginUser } from "../../api/auth";
 import useAuthStore from "../../stores/useAuthStore";
 import { ButtonGoogle } from "../../components/common/ButtonGoogle";
+import useBackendAuthStore from "../../stores/useBackendAuthStore";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const { user, setUser, initAuthObserver } = useAuthStore();
+  const { loginBackend } = useBackendAuthStore();
 
   const navigate = useNavigate();
 
@@ -17,13 +19,7 @@ const Login: React.FC = () => {
     e.preventDefault();
 
     try {
-      const data = await fetchLoginUser(email, password);
-
-      if (data.data.token) {
-        localStorage.setItem("token", data.data.token);
-        setUser(data.data.user);
-      }
-
+      await loginBackend(email, password);
       navigate("/meeting");
     } catch (error: any) {
       setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.");

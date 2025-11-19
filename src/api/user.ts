@@ -59,11 +59,7 @@ export async function fetchDeleteUser(): Promise<any> {
       throw new Error('No hay token de autenticación disponible');
     }
 
-    // Obtener el ID del usuario
-    const userProfile = await fetchUserProfile();
-    const userId = userProfile.data._id;
-
-    const response = await fetch(`${API}/users/${userId}`, {
+    const response = await fetch(`${API}/users/me`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
