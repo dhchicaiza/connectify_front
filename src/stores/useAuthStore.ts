@@ -52,9 +52,13 @@ const useAuthStore = create<AuthStore>()((set) => ({
       const googleIdToken = await firebaseUser.getIdToken();
 
       const backendResponse = await fetchLoginUserGoogle(googleIdToken);
+      
+      const token = backendResponse.data?.token;
+      const user = backendResponse.data?.user;
 
-      if (backendResponse.token) {
-        localStorage.setItem("token", backendResponse.token);
+      if (token && user) {
+        localStorage.setItem("gToken", backendResponse.data.token);
+        useAuthStore.getState().setUser(user);
       } else {
         console.error("Error en el servidor", backendResponse);
       }

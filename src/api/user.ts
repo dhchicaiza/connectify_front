@@ -53,6 +53,7 @@ export async function fetchUserProfile(): Promise<any> {
  */
 export async function fetchDeleteUser(): Promise<any> {
   try {
+    // backend
     const token = getToken()
     
     if (!token) {

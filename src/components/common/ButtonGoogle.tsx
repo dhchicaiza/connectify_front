@@ -16,7 +16,7 @@ export const ButtonGoogle: React.FC<ButtonGoogleProps> = (
     e.preventDefault();
     try {
       await loginWithGoogle();
-      navigate("/userhome")
+      navigate("/meeting")
     } catch (error) {
       setErrorMessage("No se pudo iniciar sesión con el servicio de Google");
     }
