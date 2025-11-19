@@ -1,33 +1,39 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./Login.module.scss";
 import { fetchLoginUser } from "../../api/auth";
+import useAuthStore from "../../stores/useAuthStore";
+import { ButtonGoogle } from "../../components/common/ButtonGoogle";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const { user, setUser, initAuthObserver } = useAuthStore();
 
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implementar lógica de login
-    
-    try {
-      const data =  await fetchLoginUser(email, password);
 
-      if (data.token) {
-        localStorage.setItem('token', data.token)
+    try {
+      const data = await fetchLoginUser(email, password);
+
+      if (data.data.token) {
+        localStorage.setItem("token", data.data.token);
+        setUser(data.data.user);
       }
       
       navigate("/meeting");
-      
     } catch (error: any) {
-      setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.")
+      setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.");
     }
-    
   };
+
+  useEffect(() => {
+    const unsub = initAuthObserver();
+    return () => unsub();
+  }, [initAuthObserver]);
 
   return (
     <div className={styles.loginPage}>
@@ -101,10 +107,8 @@ const Login: React.FC = () => {
         </div>
 
         <div className={styles.socialButtons}>
-          <button type="button" className={styles.socialButton}>
-            <span>G</span>
-            <span>Google</span>
-          </button>
+          <ButtonGoogle setErrorMessage={setErrorMessage} />
+
           <button type="button" className={styles.socialButton}>
             <span>f</span>
             <span>Facebook</span>
@@ -123,4 +127,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-
