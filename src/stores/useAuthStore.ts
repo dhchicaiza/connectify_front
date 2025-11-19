@@ -7,6 +7,10 @@ import { fetchUserProfile } from "../api/user";
 // ⭐️ Interfaz User Extendida
 // Incluye las propiedades de Firebase (email, displayName) y las propiedades del Backend (firstName, lastName, age).
 // Las propiedades del backend son opcionales (?) porque pueden no estar disponibles inmediatamente (ej. después de initAuthObserver).
+/**
+ * Shape of the authenticated user stored in the global state.
+ * Combines Firebase information with backend profile fields.
+ */
 interface User {
   displayName: string | null;
   email: string | null;
@@ -18,6 +22,9 @@ interface User {
   age?: number;       // ⬅️ Añadido para el perfil
 }
 
+/**
+ * Contract that describes every action exposed by the auth store.
+ */
 type AuthStore = {
   user: User | null;
   setUser: (user: User) => void;
@@ -27,11 +34,19 @@ type AuthStore = {
   logout: () => Promise<void>;
 };
 
+/**
+ * Global auth store: keeps Firebase auth state in sync with backend data
+ * and exposes helper actions (login, logout, restore session, etc.).
+ */
 const useAuthStore = create<AuthStore>()((set) => ({
   user: null,
   // setUser ahora acepta la interfaz extendida 'User'
   setUser: (user: User) => set({ user }),
 
+  /**
+   * Subscribes to Firebase auth changes and keeps the store up to date.
+   * @returns {() => void} Function to unsubscribe from the observer.
+   */
   initAuthObserver: () => {
     const unsubscribe = onAuthStateChanged(
       auth,
@@ -62,6 +77,10 @@ const useAuthStore = create<AuthStore>()((set) => ({
     return unsubscribe;
   },
 
+  /**
+   * Fetches the profile from the backend when a JWT token exists
+   * but Firebase has not yet populated the user in the store.
+   */
   restoreAuthFromToken: async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -97,6 +116,10 @@ const useAuthStore = create<AuthStore>()((set) => ({
     }
   },
 
+  /**
+   * Signs the user in with Google via Firebase and completes the flow
+   * by exchanging the token with the backend.
+   */
   loginWithGoogle: async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -135,6 +158,9 @@ const useAuthStore = create<AuthStore>()((set) => ({
     }
   },
 
+  /**
+   * Signs the user out from Firebase and clears the local session/token.
+   */
   logout: async () => {
     try {
       await signOut(auth);

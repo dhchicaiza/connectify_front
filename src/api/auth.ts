@@ -43,6 +43,15 @@ export async function fetchLoginUser(
   }
 }
 
+/**
+ * Authenticates a user with Google credentials.
+ *
+ * @async
+ * @function fetchLoginUserGoogle
+ * @param {string} idToken - Firebase Google ID token obtained on the client.
+ * @returns {Promise<any>} - JSON response from the server containing token/user information.
+ * @throws {Error} - Propagates network or parsing errors to the caller.
+ */
 export async function fetchLoginUserGoogle(idToken: string) {
   const response = await fetch(`${API}/auth/google`, {
     method: "POST",

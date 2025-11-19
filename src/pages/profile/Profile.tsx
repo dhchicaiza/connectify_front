@@ -24,6 +24,10 @@ const initialFormData: FormData = {
   password: "",
 };
 
+/**
+ * Displays and manages the authenticated user's profile,
+ * allowing updates, password changes and account deletion.
+ */
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { user, setUser } = useAuthStore(); 
@@ -90,7 +94,16 @@ const Profile: React.FC = () => {
       const response = await fetchUpdateUser(dataToSend);
       
       if (response.data.user) {
-        setUser(response.data.user); 
+        const userData = response.data.user;
+        setUser({
+          email: userData.email || null,
+          displayName: userData.firstName && userData.lastName 
+            ? `${userData.firstName} ${userData.lastName}`
+            : userData.email || null,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          age: userData.age,
+        }); 
       }
       
       // Limpiar las contraseñas después de guardar exitosamente
@@ -111,6 +124,9 @@ const Profile: React.FC = () => {
     setShowDeleteAlert(true);
   };
 
+  /**
+   * Executes the account deletion flow after user confirmation.
+   */
   const confirmDelete = async () => {
     try {
       await fetchDeleteUser();
@@ -128,10 +144,14 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleDeleteSuccessClose = () => {
+  /**
+   * Handles the dismissal of the deletion success alert,
+   * ensuring the session is cleaned up before redirecting home.
+   */
+  const handleDeleteSuccessClose = async () => {
     setShowDeleteSuccessAlert(false);
-    localStorage.removeItem("token");
-    setUser(null);
+    const { logout } = useAuthStore.getState();
+    await logout();
     navigate("/");
   };
 

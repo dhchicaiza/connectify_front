@@ -6,15 +6,22 @@ import useAuthStore from "../../stores/useAuthStore";
 import { ButtonGoogle } from "../../components/common/ButtonGoogle";
 import Alert from "../../components/common/Alert";
 
+/**
+ * Login page that supports email/password authentication,
+ * Google OAuth and displays success/error alerts.
+ */
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  const { user, setUser, initAuthObserver } = useAuthStore();
+  const { setUser, initAuthObserver } = useAuthStore();
 
   const navigate = useNavigate();
 
+  /**
+   * Handles the classic email/password login form submission.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 

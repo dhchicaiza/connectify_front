@@ -15,6 +15,9 @@ import type {
 
 import { db } from "../lib/firebase.config"; 
 
+/**
+ * Shape of the user documents stored in Firestore.
+ */
 export interface User {
     displayName?: string | null;
     email?: string | null;
@@ -26,13 +29,22 @@ export interface User {
 export type UserCreate = Omit<User, "id" | "createdAt" | "updatedAt">;
 export type UserUpdate = Partial<Omit<User, "id" | "createdAt">>;
 
+/**
+ * Lightweight data-access object to interact with the Firestore `users` collection.
+ */
 class UserDAO {
     private collectionRef: CollectionReference;
 
+    /**
+     * Creates a data-access object scoped to the `users` collection.
+     */
     constructor() {
         this.collectionRef = collection(db, "users");
     }
 
+    /**
+     * Retrieves a user document by its ID.
+     */
     async getUserById(id: string): Promise<
         | { success: true; data: User }
         | { success: false; data: null; error?: string }
@@ -49,6 +61,9 @@ class UserDAO {
         }
     }
 
+    /**
+     * Persists a new user document.
+     */
     async createUser(userData: UserCreate): Promise<
         | { success: true; id: string }
         | { success: false; error: string }
@@ -67,6 +82,9 @@ class UserDAO {
         }
     }
 
+    /**
+     * Partially updates an existing user document.
+     */
     async updateUser(id: string, userData: UserUpdate): Promise<
         | { success: true }
         | { success: false; error: string }
@@ -85,6 +103,9 @@ class UserDAO {
         }
     }
 
+    /**
+     * Deletes a user document from Firestore.
+     */
     async deleteUser(id: string): Promise<
         | { success: true }
         | { success: false; error: string }

@@ -17,6 +17,10 @@ const googleProvider = new GoogleAuthProvider();
 
 
 
+/**
+ * Registration page that handles email/password sign-up
+ * and provides a Google onboarding alternative.
+ */
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     firstName: "",
@@ -34,6 +38,9 @@ const Register: React.FC = () => {
 
   const navigate = useNavigate();
 
+  /**
+   * Keeps the form state in sync with the input fields.
+   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -43,6 +50,9 @@ const Register: React.FC = () => {
     setSuccessMessage(null);
   };
 
+  /**
+   * Sends the registration payload to the backend REST API.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -99,6 +109,10 @@ const Register: React.FC = () => {
     }
   };
 
+/**
+ * Completes the Google authentication flow by exchanging
+ * the Firebase token with the backend server.
+ */
 const callBackendAuth = async (firebaseUser: UserCredentialType['user']) => {
     // 1. Obtener el ID Token seguro de Firebase
     const idToken = await firebaseUser.getIdToken();
@@ -137,6 +151,10 @@ const callBackendAuth = async (firebaseUser: UserCredentialType['user']) => {
     }
 };
 
+/**
+ * Handles the Google OAuth button click by triggering the
+ * Firebase popup and forwarding the identity to the backend.
+ */
 const handleGoogleLogin = async () => {
     // 💡 Usar tu estado de carga/error
     // setIsLoading(true);

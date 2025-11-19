@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import styles from "./Alert.module.scss";
 
+/**
+ * Props accepted by the generic Alert component.
+ */
 interface AlertProps {
   isOpen: boolean;
   onClose: () => void;
@@ -10,6 +13,9 @@ interface AlertProps {
   type?: "confirm" | "alert" | "success";
 }
 
+/**
+ * Modal-style alert used for confirmations, warnings or success feedback.
+ */
 const Alert: React.FC<AlertProps> = ({
   isOpen,
   onClose,

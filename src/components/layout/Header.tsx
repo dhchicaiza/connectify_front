@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import useAuthStore from "../../stores/useAuthStore";
 import Alert from "../common/Alert";
 
+/**
+ * Global navigation bar that reacts to auth state and exposes
+ * links, profile access and logout confirmations.
+ */
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout, initAuthObserver, restoreAuthFromToken } = useAuthStore();
@@ -57,11 +61,17 @@ const Header: React.FC = () => {
     };
   }, []);
 
+  /**
+   * Opens the confirmation alert before logging out.
+   */
   const handleLogout = () => {
     setShowMenu(false);
     setShowLogoutAlert(true);
   };
 
+  /**
+   * Executes the logout action after the user confirms it.
+   */
   const confirmLogout = async () => {
     try {
       await logout();
@@ -73,15 +83,24 @@ const Header: React.FC = () => {
     }
   };
 
+  /**
+   * Navigates the user to the profile page and closes the dropdown.
+   */
   const handleProfileClick = () => {
     setShowMenu(false);
     navigate("/profile");
   };
 
+  /**
+   * Shows or hides the user dropdown menu.
+   */
   const toggleMenu = () => {
     setShowMenu(!showMenu);
   };
 
+  /**
+   * Generates the initials for the avatar circle using either backend or Firebase data.
+   */
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName.charAt(0).toUpperCase()}${user.lastName.charAt(0).toUpperCase()}`;

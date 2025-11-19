@@ -4,6 +4,9 @@ import styles from "./ForgotPassword.module.scss";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
 
+/**
+ * Page that handles the password recovery request form.
+ */
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false); // Nuevo estado para la carga
@@ -11,6 +14,9 @@ const ForgotPassword: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null); // Nuevo estado para mensajes de éxito
   const navigate = useNavigate();
 
+  /**
+   * Sends the reset request to the backend and surfaces the result to the user.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -51,6 +57,9 @@ const ForgotPassword: React.FC = () => {
     }
   };
 
+  /**
+   * Returns the user to the login page without submitting the form.
+   */
   const handleCancel = () => {
     navigate("/login");
   };

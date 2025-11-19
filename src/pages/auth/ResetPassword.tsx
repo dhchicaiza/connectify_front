@@ -4,6 +4,9 @@ import styles from "./ResetPassword.module.scss";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+/**
+ * Lets the user set a new password after following the emailed reset link.
+ */
 const ResetPassword: React.FC = () => {
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -35,6 +38,9 @@ const ResetPassword: React.FC = () => {
         );
     }
 
+    /**
+     * Sends the new password and reset token to the API.
+     */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -82,6 +88,9 @@ const ResetPassword: React.FC = () => {
         }
     };
 
+    /**
+     * Navigates back to the login page without submitting the new password.
+     */
     const handleCancel = () => {
         navigate("/login");
     };

@@ -80,8 +80,10 @@ export async function fetchDeleteUser(): Promise<any> {
   }
 }
 
-// Define la estructura de los datos que se pueden enviar para la actualización
-// La contraseña se incluye opcionalmente, pero requiere currentPassword cuando se cambia.
+/**
+ * Payload accepted by the profile update endpoint.
+ * Password changes require the current password field.
+ */
 interface UpdateUserData {
   firstName?: string;
   lastName?: string;
@@ -114,10 +116,21 @@ export async function fetchUpdateUser(updateData: UpdateUserData): Promise<any> 
     // 1. Limpiar los datos para el envío
     // El controlador del backend (updateProfile) usa PUT /users/me, que está bien.
     // Convertimos 'age' a number si existe, ya que el backend lo espera como number.
-    const bodyToSend: UpdateUserData & { age?: number } = {
-      ...updateData,
+    const bodyToSend: {
+      firstName?: string;
+      lastName?: string;
+      age?: number;
+      email?: string;
+      password?: string;
+      currentPassword?: string;
+    } = {
+      ...(updateData.firstName !== undefined && { firstName: updateData.firstName }),
+      ...(updateData.lastName !== undefined && { lastName: updateData.lastName }),
+      ...(updateData.email !== undefined && { email: updateData.email }),
+      ...(updateData.password !== undefined && { password: updateData.password }),
+      ...(updateData.currentPassword !== undefined && { currentPassword: updateData.currentPassword }),
       ...(updateData.age !== undefined && { 
-        age: Number(updateData.age) // Conversión necesaria si formData.age es string
+        age: typeof updateData.age === 'string' ? Number(updateData.age) : updateData.age
       })
     };
     
