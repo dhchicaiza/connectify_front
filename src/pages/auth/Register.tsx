@@ -1,0 +1,215 @@
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import styles from "./Register.module.scss";
+import { ButtonGoogle } from "../../components/common/ButtonGoogle";
+import { ButtonGit } from "../../components/common/ButtonGit";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+
+import Alert from "../../components/common/Alert";
+
+
+// Register.tsx (dentro del componente React)
+
+
+
+/**
+ * Registration page that handles email/password sign-up
+ * and provides a Google onboarding alternative.
+ */
+const Register: React.FC = () => {
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    age: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+
+  const navigate = useNavigate();
+
+  /**
+   * Keeps the form state in sync with the input fields.
+   */
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+    setError(null);
+    setSuccessMessage(null);
+  };
+
+  /**
+   * Sends the registration payload to the backend REST API.
+   */
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+
+    // 🌟 VALIDACIÓN DE EDAD: Aseguramos que sea un número válido antes de continuar
+    const ageNumber = parseInt(formData.age, 10);
+    if (!formData.age || isNaN(ageNumber) || ageNumber < 1) {
+        setError("Por favor, introduce una edad válida (número mayor que 0).");
+        return;
+    }
+    
+    // 💡 Preparamos el payload final para enviar, incluyendo confirmPassword y age como número
+    const payloadToSend = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        age: ageNumber,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword, 
+    };
+    
+    setIsLoading(true);
+    setError(null);
+    
+    console.log("JSON FINAL enviado al Backend:", payloadToSend);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        // 💡 Usamos el payload completo que incluye confirmPassword y age como número
+        body: JSON.stringify(payloadToSend),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setShowSuccessAlert(true);
+      } else {
+        // Manejar errores de validación del backend o errores de servidor
+        setError(result.message || "Error al registrar la cuenta. Intente de nuevo.");
+      }
+    } catch (err) {
+      // Manejar errores de red
+      setError("Error de conexión. Revise la URL de la API o la red.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className={styles.registerPage}>
+      <div className={styles.registerCard}>
+        <h2 className={styles.title}>Crear Cuenta</h2>
+
+        {/* Mensajes de estado */}
+        {error && <div className={styles.alertError}>{error}</div>}
+        {successMessage && <div className={styles.alertSuccess}>{successMessage}</div>}
+
+        <form onSubmit={handleSubmit} className={styles.form}>
+          {/* Primer Nombre */}
+          <div className={styles.formGroup}>
+            <label>Nombre</label>
+            <input 
+              type="text" 
+              name="firstName" 
+              value={formData.firstName} 
+              onChange={handleChange} 
+              placeholder="Juan" 
+              required 
+            />
+          </div>
+
+          {/* Apellido */}
+          <div className={styles.formGroup}>
+            <label>Apellido</label>
+            <input 
+              type="text" 
+              name="lastName" 
+              value={formData.lastName} 
+              onChange={handleChange} 
+              placeholder="Pérez" 
+              required 
+            />
+          </div>
+
+          {/* Correo Electrónico */}
+          <div className={styles.formGroup}>
+            <label>Correo Electrónico</label>
+            <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="tu@email.com" required />
+          </div>
+
+          {/* Edad */}
+          <div className={styles.formGroup}>
+            <label>Edad</label>
+            <input type="number" name="age" value={formData.age} onChange={handleChange} placeholder="25" min="1" required />
+          </div>
+
+          {/* Contraseña */}
+          <div className={styles.formGroup}>
+            <label>Contraseña</label>
+            <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="••••••••" required />
+          </div>
+
+          {/* Confirmar Contraseña */}
+          <div className={styles.formGroup}>
+            <label>Confirmar Contraseña</label>
+            <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="••••••••" required />
+          </div>
+
+
+          <button
+            type="submit"
+            className={styles.submitButton}
+            disabled={isLoading} // Deshabilitar mientras carga
+          >
+            {isLoading ? "Registrando..." : "Crear Cuenta"}
+          </button>
+        </form>
+
+        <div className={styles.divider}>
+          <div className={styles.dividerText}>O continuar con</div>
+        </div>
+
+        {errorMessage && (
+          <div className={styles.alertError}>{errorMessage}</div>
+        )}
+
+        <div className={styles.socialButtons}>
+          <ButtonGoogle setErrorMessage={setErrorMessage} />
+          <ButtonGit setErrorMessage={setErrorMessage} />
+        </div>
+
+        <div className={styles.loginSection}>
+          <p>¿Ya tienes una cuenta?</p>
+          <Link to="/login" className={styles.loginButton}>
+            Iniciar Sesión
+          </Link>
+        </div>
+      </div>
+
+      <Alert
+        isOpen={showSuccessAlert}
+        onClose={() => {
+          setShowSuccessAlert(false);
+          navigate('/login');
+        }}
+        title="Registro Exitoso"
+        message="Tu cuenta ha sido creada correctamente. Serás redirigido al inicio de sesión."
+        type="success"
+      />
+    </div>
+  );
+};
+
+export default Register;
