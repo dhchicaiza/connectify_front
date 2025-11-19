@@ -24,7 +24,7 @@ const Login: React.FC = () => {
         setUser(data.data.user);
       }
 
-      navigate("/userhome");
+      navigate("/meeting");
     } catch (error: any) {
       setErrorMessage("No se pudo iniciar sesión. Verifica tus datos.");
     }
