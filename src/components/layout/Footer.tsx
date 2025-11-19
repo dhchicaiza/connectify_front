@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import styles from "./Footer.module.scss";
 
+/**
+ * Application footer containing quick navigation links for
+ * account management, company info, meeting actions, and help.
+ */
 const Footer: React.FC = () => {
   return (
     <footer className={styles.footer}>

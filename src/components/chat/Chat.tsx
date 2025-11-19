@@ -1,12 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
 // import { socket } from "../../sockets/socketManager";   // ⛔ Comentado: no usar socket
 
+/**
+ * Shape of the messages displayed by the chat component.
+ */
 type ChatMessage = {
   userId: string;
   message: string;
   timestamp: string;
 };
 
+/**
+ * Local-only chat UI. Socket calls remain commented out, so messages
+ * live solely in memory for demo purposes.
+ */
 const Chat: React.FC = () => {
   const usernameRef = useRef(
     `user-${Math.random().toString(36).slice(2, 8)}`
@@ -30,6 +37,9 @@ const Chat: React.FC = () => {
     // };
   }, []);
 
+  /**
+   * Handles the message form submission and appends it to the local timeline.
+   */
   const handleSendMessage = (event: React.FormEvent) => {
     event.preventDefault();
     const trimmedMessage = messageDraft.trim();
