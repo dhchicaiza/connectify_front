@@ -15,7 +15,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const { user, setUser, initAuthObserver } = useAuthStore();
+  const { setUser, initAuthObserver } = useAuthStore();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
   const navigate = useNavigate();
@@ -116,10 +116,7 @@ const Login: React.FC = () => {
         </div>
 
         <div className={styles.socialButtons}>
-          <ButtonGoogle 
-            setErrorMessage={setErrorMessage}
-            onSuccess={() => setShowSuccessAlert(true)}
-          />
+          <ButtonGoogle setErrorMessage={setErrorMessage} />
 
           <ButtonGit setErrorMessage={setErrorMessage} />
         </div>

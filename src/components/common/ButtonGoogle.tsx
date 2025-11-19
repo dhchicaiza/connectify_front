@@ -7,15 +7,14 @@ import styles from "./ButtonGoogle.module.scss";
  */
 interface ButtonGoogleProps {
   setErrorMessage: React.Dispatch<React.SetStateAction<string>>;
-  onSuccess?: () => void;
 }
 
 /**
  * Renders the Google sign-in button and centralises the OAuth flow.
  */
-export const ButtonGoogle: React.FC<ButtonGoogleProps> = (
-  {setErrorMessage, onSuccess}
-) => {
+export const ButtonGoogle: React.FC<ButtonGoogleProps> = ({
+  setErrorMessage,
+}) => {
   const { loginWithGoogle } = useAuthStore();
   const navigate = useNavigate();
 
