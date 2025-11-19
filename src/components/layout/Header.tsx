@@ -1,11 +1,37 @@
 import { Link, useNavigate } from "react-router-dom";
 import styles from "./Header.module.scss";
 import { useEffect, useRef, useState } from "react";
+import useAuthStore from "../../stores/useAuthStore";
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+  const { user, logout, initAuthObserver, restoreAuthFromToken } = useAuthStore();
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Inicializar el observer de Firebase
+    const unsubscribe = initAuthObserver();
+
+    // Restaurar autenticación desde token si no hay usuario pero hay token
+    const token = localStorage.getItem("token");
+    if (token && !user) {
+      restoreAuthFromToken();
+    }
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Restaurar autenticación si hay token pero no usuario
+    // Solo se ejecuta cuando user cambia de null a algo o viceversa
+    const token = localStorage.getItem("token");
+    if (token && !user) {
+      restoreAuthFromToken();
+    }
+  }, [user]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -29,16 +55,40 @@ const Header: React.FC = () => {
     };
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/home");
+  const handleLogout = async () => {
+    setShowMenu(false);
+    await logout();
+    navigate("/");
+  };
+
+  const handleProfileClick = () => {
+    setShowMenu(false);
+    navigate("/profile");
+  };
+
+  const toggleMenu = () => {
+    setShowMenu(!showMenu);
+  };
+
+  const getInitials = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName.charAt(0).toUpperCase()}${user.lastName.charAt(0).toUpperCase()}`;
+    }
+    if (user?.displayName) {
+      const names = user.displayName.split(" ");
+      if (names.length >= 2) {
+        return `${names[0].charAt(0).toUpperCase()}${names[1].charAt(0).toUpperCase()}`;
+      }
+      return user.displayName.charAt(0).toUpperCase();
+    }
+    return "U";
   };
 
   return (
     <header className={styles.header}>
       <nav className={styles.nav}>
         {/* Logo */}
-        <Link to="/" className={styles.logoLink}>
+        <Link to={user || localStorage.getItem("token") ? "/meeting" : "/"} className={styles.logoLink}>
           <div className={styles.logoContainer}>
             <div className={styles.logoGradient}></div>
             <div className={styles.logoCircle}>
@@ -99,17 +149,68 @@ const Header: React.FC = () => {
 
         {/* Auth Buttons or User Icon */}
         <div className={styles.authButtons}>
-          {/* TODO: Mostrar userIcon cuando el usuario esté autenticado */}
-          {/* Por ahora, mostrar ambos para que funcione en todas las páginas */}
-          <Link to="/profile" className={styles.userIcon}>
-            <span>LS</span>
-          </Link>
-          <Link to="/login" className={styles.loginButton}>
-            Iniciar Sesión
-          </Link>
-          <Link to="/register" className={styles.registerButton}>
-            Crear una cuenta
-          </Link>
+          {user || localStorage.getItem("token") ? (
+            <div className={styles.userMenuContainer} ref={menuRef}>
+              <button 
+                onClick={toggleMenu} 
+                className={styles.userIcon}
+                aria-label="Menú de usuario"
+              >
+                <span>{getInitials()}</span>
+              </button>
+              {showMenu && (
+                <div className={styles.userMenu}>
+                  <button 
+                    onClick={handleProfileClick}
+                    className={styles.menuItem}
+                  >
+                    <svg 
+                      className={styles.menuIcon} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
+                      />
+                    </svg>
+                    Mi Perfil
+                  </button>
+                  <button 
+                    onClick={handleLogout}
+                    className={`${styles.menuItem} ${styles.menuItemDanger}`}
+                  >
+                    <svg 
+                      className={styles.menuIcon} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+                      />
+                    </svg>
+                    Cerrar Sesión
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <Link to="/login" className={styles.loginButton}>
+                Iniciar Sesión
+              </Link>
+              <Link to="/register" className={styles.registerButton}>
+                Crear una cuenta
+              </Link>
+            </>
+          )}
         </div>
       </nav>
     </header>

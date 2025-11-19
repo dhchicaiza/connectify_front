@@ -1,19 +1,50 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../../components/layout/Header";
 import Alert from "../../components/common/Alert";
 import styles from "./Profile.module.scss";
-import { fetchDeleteUser } from "../../api/user";
+import { fetchDeleteUser, fetchUpdateUser } from "../../api/user"; 
+import useAuthStore from "../../stores/useAuthStore";
+
+interface FormData {
+  firstName: string;
+  lastName: string;
+  age: string;
+  email: string;
+  password: string; 
+}
+
+const initialFormData: FormData = {
+  firstName: "",
+  lastName: "",
+  age: "",
+  email: "",
+  password: "",
+};
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    fullName: "",
-    age: "",
-    email: "",
-    password: "",
-  });
+  const { user, setUser } = useAuthStore(); 
+  
+  const [formData, setFormData] = useState<FormData>(initialFormData);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); 
+  const [saveMessage, setSaveMessage] = useState<string | null>(null); 
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prevData => ({
+        ...prevData,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        age: user.age ? String(user.age) : '', 
+        email: user.email || '',
+        password: "", 
+      }));
+    } else {
+    }
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -22,10 +53,36 @@ const Profile: React.FC = () => {
     });
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implementar lógica de guardar cambios
-    console.log("Guardar cambios:", formData);
+    setSaveMessage(null);
+    setIsSaving(true);
+    
+    const dataToSend = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      ...(formData.age && { age: Number(formData.age) }),
+      email: formData.email,
+      ...(formData.password && { password: formData.password }),
+    };
+
+    try {
+      const response = await fetchUpdateUser(dataToSend);
+      
+      if (response.data.user) {
+        setUser(response.data.user); 
+      }
+      
+      setFormData(prev => ({ ...prev, password: "" }));
+      setShowSuccessAlert(true);
+
+    } catch (error: any) {
+      console.error("Error al guardar cambios:", error);
+      const message = error.message || "Error al guardar cambios. Por favor, verifica tus datos.";
+      setSaveMessage(message);
+      setIsSaving(false);
+      setTimeout(() => setSaveMessage(null), 4000);
+    }
   };
 
   const handleDelete = () => {
@@ -39,13 +96,15 @@ const Profile: React.FC = () => {
       setTimeout(() => {
         localStorage.removeItem("token");
         navigate("/");
-      }, 2000);
+      }, 1000);
     } catch (error) {
       console.error('Error deleting account:', error)
+      alert('Error al eliminar la cuenta. Inténtalo de nuevo.');
     }
 
     setShowDeleteAlert(false);
   };
+
 
   return (
     <div className={styles.profilePage}>
@@ -53,6 +112,7 @@ const Profile: React.FC = () => {
 
       <div className={styles.content}>
         <div className={styles.container}>
+          
           {/* Header con flecha y avatar */}
           <div className={styles.header}>
             <button onClick={() => navigate(-1)} className={styles.backButton}>
@@ -66,7 +126,9 @@ const Profile: React.FC = () => {
               </svg>
             </button>
             <div className={styles.avatar}>
-              <span className={styles.avatarInitials}>LS</span>
+              <span className={styles.avatarInitials}>
+                {formData.firstName.charAt(0).toUpperCase()}{formData.lastName.charAt(0).toUpperCase()} 
+              </span>
             </div>
             <h1 className={styles.title}>Mi Perfil</h1>
           </div>
@@ -75,16 +137,28 @@ const Profile: React.FC = () => {
           <div className={styles.formCard}>
             <form onSubmit={handleSave} className={styles.form}>
               <div className={styles.formGrid}>
+                
                 {/* Columna Izquierda */}
                 <div className={styles.formColumn}>
                   <div className={styles.formGroup}>
-                    <label>Nombre Completo</label>
+                    <label>Nombre</label>
                     <input
                       type="text"
-                      name="fullName"
-                      value={formData.fullName}
+                      name="firstName"
+                      value={formData.firstName}
                       onChange={handleChange}
-                      placeholder="Juan Pérez"
+                      placeholder="Juan"
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Apellido</label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      placeholder="Pérez"
                     />
                   </div>
 
@@ -127,17 +201,31 @@ const Profile: React.FC = () => {
                 </div>
               </div>
 
-              {/* Botones */}
+              {/* Botones y Mensajes de Estado */}
               <div className={styles.buttonGroup}>
+                {saveMessage && (
+                  <p style={{ 
+                    color: saveMessage.includes("Error") ? 'var(--color-danger)' : 'var(--color-success)',
+                    fontWeight: 'bold',
+                    alignSelf: 'center',
+                  }}>
+                    {saveMessage}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={handleDelete}
                   className={styles.deleteButton}
+                  disabled={isSaving}
                 >
                   Eliminar Cuenta
                 </button>
-                <button type="submit" className={styles.saveButton}>
-                  Guardar Cambios
+                <button 
+                  type="submit" 
+                  className={styles.saveButton}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Guardando..." : "Guardar Cambios"}
                 </button>
               </div>
             </form>
@@ -152,6 +240,17 @@ const Profile: React.FC = () => {
         title="Eliminar Cuenta"
         message="¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer."
         type="confirm"
+      />
+
+      <Alert
+        isOpen={showSuccessAlert}
+        onClose={() => {
+          setShowSuccessAlert(false);
+          setIsSaving(false);
+        }}
+        title="Perfil Actualizado"
+        message="Tus cambios han sido guardados exitosamente."
+        type="success"
       />
     </div>
   );

@@ -7,7 +7,7 @@ interface AlertProps {
   onConfirm?: () => void;
   title: string;
   message: string;
-  type?: "confirm" | "alert";
+  type?: "confirm" | "alert" | "success";
 }
 
 const Alert: React.FC<AlertProps> = ({
@@ -40,7 +40,19 @@ const Alert: React.FC<AlertProps> = ({
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.alertCard} onClick={(e) => e.stopPropagation()}>
+      <div className={`${styles.alertCard} ${type === "success" ? styles.successCard : ""}`} onClick={(e) => e.stopPropagation()}>
+        {type === "success" && (
+          <div className={styles.successIcon}>
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </div>
+        )}
         <h3 className={styles.title}>{title}</h3>
         <p className={styles.message}>{message}</p>
         <div className={styles.buttonGroup}>
@@ -65,7 +77,7 @@ const Alert: React.FC<AlertProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className={styles.confirmButton}
+              className={type === "success" ? styles.successButton : styles.confirmButton}
             >
               Aceptar
             </button>

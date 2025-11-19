@@ -6,7 +6,9 @@ import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import Profile from "../pages/profile/Profile";
+import UserHome from "../pages/UserHome";
 import Meeting from "../pages/meeting/Meeting";
+import ActiveMeeting from "../pages/meeting/ActiveMeeting";
 
 export const routes = [
     {
@@ -38,8 +40,16 @@ export const routes = [
         element: <Profile />,
     },
     {
+        path: "/userhome",
+        element: <UserHome/>
+    },
+    {
         path: "/meeting",
         element: <Meeting />,
+    },
+    {
+        path: "/active-meeting",
+        element: <ActiveMeeting />,
     },
 ]
 
