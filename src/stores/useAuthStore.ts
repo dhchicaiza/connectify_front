@@ -136,8 +136,10 @@ const useAuthStore = create<AuthStore>()((set) => ({
       console.log("Respuesta del backend tras login con Google:", backendResponse);
       if (backendResponse.data.token) {
         localStorage.setItem("token", backendResponse.data.token);
-        
+        console.log("Token guardado en localStorage", backendResponse.data.token) ;
         if (backendResponse.data.user) {
+          console.log("Usuario establecido en el store", backendResponse.data.user);
+          console.log("Usuario establecido en el store", backendResponse.data.user);
             const userLogged: User = {
                 // Datos de Firebase
                 displayName: firebaseUser.displayName, 
@@ -149,6 +151,7 @@ const useAuthStore = create<AuthStore>()((set) => ({
                 age: backendResponse.data.user.age,             
             };
             set({ user: userLogged });
+            console.log("Usuario establecido en el store", userLogged);
         }
         
       } else {

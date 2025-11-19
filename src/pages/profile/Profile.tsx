@@ -93,7 +93,7 @@ const Profile: React.FC = () => {
 
     try {
       const response = await fetchUpdateUser(dataToSend);
-      
+      console.log("Profile update response:", response);
       if (response.data.user) {
         const userData = response.data.user;
         setUser({
