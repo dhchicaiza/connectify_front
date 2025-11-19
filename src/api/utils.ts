@@ -108,3 +108,4 @@ export async function handleApiError({ response, data, location }: HandleApiErro
 
   throw new Error(errorMessage);
 }
+

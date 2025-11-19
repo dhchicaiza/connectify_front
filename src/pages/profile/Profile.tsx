@@ -43,6 +43,7 @@ const Profile: React.FC = () => {
       }));
     } else {
     }
+    console.log("User data loaded into form:", user);
   }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

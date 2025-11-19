@@ -9,12 +9,12 @@ import type { UserCredential as UserCredentialType } from 'firebase/auth';
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import styles from "./Register.module.scss";
+import { ButtonGoogle } from "../../components/common/ButtonGoogle";
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
-// Register.tsx (dentro del componente React)
 
 
 

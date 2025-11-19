@@ -110,8 +110,6 @@ interface UpdateUserData {
  * @throws {Error} - Throws an error if the request fails or returns a non-OK status.
  */
 export async function fetchUpdateUser(updateData: UpdateUserData): Promise<any> {
-  // Asegúrate de que estás desestructurando y usando 'location' si es parte de tu patrón de manejo de errores
-  // para evitar warnings/errores en el scope. Aquí lo omitimos ya que no está definido en el contexto local.
   try {
     const token = getToken();
 
