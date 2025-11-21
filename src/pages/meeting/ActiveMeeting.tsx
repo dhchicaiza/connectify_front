@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import styles from "./Meeting.module.scss";
+import { useChat } from "./useChat";
 
 const ActiveMeeting: React.FC = () => {
+  const { id: meetingId } = useParams();
+  const { messages, messageText, setMessageText, sendMessage } =
+    useChat(meetingId);
   const [showChat, setShowChat] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoOff, setIsVideoOff] = useState(false);
-  const [message, setMessage] = useState("Buenas tardes");
   const navigate = useNavigate();
 
   const handleExit = () => {
@@ -16,7 +19,7 @@ const ActiveMeeting: React.FC = () => {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     // Aquí se enviaría el mensaje
-    setMessage("");
+    sendMessage();
   };
 
   const participants = [
@@ -27,10 +30,10 @@ const ActiveMeeting: React.FC = () => {
     { initials: "JM", name: "Jhonier Mendez" },
   ];
 
-  const chatMessages = [
-    { user: "Jhonier Mendez", time: "2:00", text: "Buenas tardes" },
-    { user: "Cristian Llanos", time: "2:01", text: "Hola" },
-  ];
+  // const chatMessages = [
+  //   { user: "Jhonier Mendez", time: "2:00", text: "Buenas tardes" },
+  //   { user: "Cristian Llanos", time: "2:01", text: "Hola" },
+  // ];
 
   return (
     <div className={styles.meetingPage}>
@@ -43,7 +46,11 @@ const ActiveMeeting: React.FC = () => {
       </header>
 
       {/* Contenido principal */}
-      <div className={`${styles.meetingContent} ${showChat ? styles.withChat : ""}`}>
+      <div
+        className={`${styles.meetingContent} ${
+          showChat ? styles.withChat : ""
+        }`}
+      >
         {/* Grid de participantes */}
         <div className={styles.participantsGrid}>
           {participants.map((participant, index) => (
@@ -95,7 +102,9 @@ const ActiveMeeting: React.FC = () => {
 
           <button
             onClick={() => setIsVideoOff(!isVideoOff)}
-            className={`${styles.controlButton} ${isVideoOff ? styles.videoOff : ""}`}
+            className={`${styles.controlButton} ${
+              isVideoOff ? styles.videoOff : ""
+            }`}
           >
             <svg
               className={styles.controlIcon}
@@ -114,7 +123,9 @@ const ActiveMeeting: React.FC = () => {
 
           <button
             onClick={() => setShowChat(!showChat)}
-            className={`${styles.controlButton} ${showChat ? styles.active : ""}`}
+            className={`${styles.controlButton} ${
+              showChat ? styles.active : ""
+            }`}
           >
             <svg
               className={styles.controlIcon}
@@ -159,7 +170,7 @@ const ActiveMeeting: React.FC = () => {
           </div>
 
           <div className={styles.chatMessages}>
-            {chatMessages.map((msg, index) => (
+            {messages.map((msg, index) => (
               <div key={index} className={styles.chatMessage}>
                 <div className={styles.messageHeader}>
                   <span className={styles.messageUser}>{msg.user}</span>
@@ -173,12 +184,15 @@ const ActiveMeeting: React.FC = () => {
           <form onSubmit={handleSendMessage} className={styles.chatInputForm}>
             <input
               type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
               className={styles.chatInput}
               placeholder="Escribe un mensaje..."
             />
-            <button type="submit" className={styles.sendButton}>
+            <button
+              type="submit"
+              className={styles.sendButton}
+            >
               <svg
                 className={styles.sendIcon}
                 fill="none"
@@ -201,4 +215,3 @@ const ActiveMeeting: React.FC = () => {
 };
 
 export default ActiveMeeting;
-

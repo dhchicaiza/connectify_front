@@ -2,14 +2,22 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/layout/Header";
 import styles from "./Meeting.module.scss";
+import { fetchIdMeet } from "../../api/meeting";
+import type { MeetingResponse } from "../../types/meeting";
 
 const Meeting: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"new" | "join">("new");
   const [roomId, setRoomId] = useState("");
   const navigate = useNavigate();
 
-  const handleNewMeeting = () => {
-    navigate("/active-meeting");
+  const handleNewMeeting = async () => {
+    let response: MeetingResponse = await fetchIdMeet();
+    let id = response.id;
+
+    if (id) {
+      navigate(`/meet/${id}`);
+    }
+    
   };
 
   const handleJoinRoom = (e: React.FormEvent) => {
@@ -21,7 +29,7 @@ const Meeting: React.FC = () => {
     }
 
     console.log("Unirse a la sala:", roomId);
-    navigate("/active-meeting");
+    navigate(`/meet/${roomId}`);
   };
 
   return (
