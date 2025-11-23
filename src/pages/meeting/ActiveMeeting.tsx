@@ -211,7 +211,11 @@ const ActiveMeeting: React.FC = () => {
       </header>
 
       {/* Contenido principal */}
-      <div className={`${styles.meetingContent} ${showChat ? styles.withChat : ""}`}>
+      <div
+        className={`${styles.meetingContent} ${
+          showChat ? styles.withChat : ""
+        }`}
+      >
         {/* Grid de participantes */}
         <div className={styles.participantsGrid}>
           {participants.map((participant, index) => (
@@ -263,7 +267,9 @@ const ActiveMeeting: React.FC = () => {
 
           <button
             onClick={() => setIsVideoOff(!isVideoOff)}
-            className={`${styles.controlButton} ${isVideoOff ? styles.videoOff : ""}`}
+            className={`${styles.controlButton} ${
+              isVideoOff ? styles.videoOff : ""
+            }`}
           >
             <svg
               className={styles.controlIcon}
@@ -282,7 +288,9 @@ const ActiveMeeting: React.FC = () => {
 
           <button
             onClick={() => setShowChat(!showChat)}
-            className={`${styles.controlButton} ${showChat ? styles.active : ""}`}
+            className={`${styles.controlButton} ${
+              showChat ? styles.active : ""
+            }`}
           >
             <svg
               className={styles.controlIcon}
@@ -367,7 +375,10 @@ const ActiveMeeting: React.FC = () => {
               className={styles.chatInput}
               placeholder="Escribe un mensaje..."
             />
-            <button type="submit" className={styles.sendButton}>
+            <button
+              type="submit"
+              className={styles.sendButton}
+            >
               <svg
                 className={styles.sendIcon}
                 fill="none"
@@ -390,4 +401,3 @@ const ActiveMeeting: React.FC = () => {
 };
 
 export default ActiveMeeting;
-
