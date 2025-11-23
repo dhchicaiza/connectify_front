@@ -9,7 +9,7 @@ interface AlertProps {
   onClose: () => void;
   onConfirm?: () => void;
   title: string;
-  message: string;
+  message: string | React.ReactNode;
   type?: "confirm" | "alert" | "success";
 }
 
@@ -60,7 +60,7 @@ const Alert: React.FC<AlertProps> = ({
           </div>
         )}
         <h3 className={styles.title}>{title}</h3>
-        <p className={styles.message}>{message}</p>
+        <div className={styles.message}>{message}</div>
         <div className={styles.buttonGroup}>
           {type === "confirm" ? (
             <>
