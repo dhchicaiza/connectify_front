@@ -34,8 +34,17 @@ export function connectToChat(roomId: string): Socket {
   const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
   const socketUrl = envSocketUrl || "http://localhost:3001";
   
+  // Warn if using localhost fallback (might not work for remote connections)
+  if (!envSocketUrl) {
+    console.warn("⚠️ ADVERTENCIA: VITE_SOCKET_URL no está configurado en .env");
+    console.warn("   Usando fallback: http://localhost:3001");
+    console.warn("   Si trabajas en red local, crea un archivo .env con:");
+    console.warn("   VITE_SOCKET_URL=http://[IP_DEL_SERVIDOR]:3001");
+    console.warn("   Ejemplo: VITE_SOCKET_URL=http://192.168.1.100:3001");
+  }
+  
   console.log("🔌 Socket connection details:");
-  console.log("   VITE_SOCKET_URL from env:", envSocketUrl);
+  console.log("   VITE_SOCKET_URL from env:", envSocketUrl || "(no configurado)");
   console.log("   Final socket URL:", socketUrl);
   console.log("   Room ID:", roomId);
   
@@ -108,6 +117,17 @@ function connectToChatWithUrl(socketUrl: string, roomId: string): Socket {
     console.error("❌ Chat connection error:", error);
     console.error("Socket URL attempted:", socketUrl);
     console.error("Error message:", error.message);
+    
+    // Provide helpful error message for common issues
+    if (socketUrl.includes("localhost") && !socketUrl.includes("127.0.0.1")) {
+      console.error("");
+      console.error("💡 SOLUCIÓN: Si estás en otra computadora o en red local:");
+      console.error("   1. Crea un archivo .env en la raíz del proyecto frontend");
+      console.error("   2. Agrega: VITE_SOCKET_URL=http://[IP_DEL_SERVIDOR]:3001");
+      console.error("   3. Reemplaza [IP_DEL_SERVIDOR] con la IP del servidor");
+      console.error("   4. Reinicia el servidor de desarrollo (npm run dev)");
+      console.error("");
+    }
   });
 
   socket.on("reconnect", (attemptNumber) => {
