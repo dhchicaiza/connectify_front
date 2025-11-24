@@ -10,6 +10,10 @@ import Meeting from "../pages/meeting/Meeting";
 import ActiveMeeting from "../pages/meeting/ActiveMeeting";
 import NotFound from "../pages/NotFound";
 
+/**
+ * Application route configuration array.
+ * Defines all available routes and their corresponding React components.
+ */
 export const routes = [
     {
         path: "/",
@@ -57,4 +61,8 @@ export const routes = [
     },
 ]
 
+/**
+ * Browser router instance configured with the application routes.
+ * Used by React Router to handle client-side navigation.
+ */
 export const router = createBrowserRouter(routes);

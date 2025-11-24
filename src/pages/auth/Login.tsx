@@ -74,35 +74,60 @@ const Login: React.FC = () => {
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.formGroup}>
-            <label>Correo Electrónico</label>
+            <label htmlFor="email-input">Correo Electrónico</label>
             <input
+              id="email-input"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@email.com"
               required
+              aria-label="Ingresa tu dirección de correo electrónico"
+              aria-describedby="email-help"
+              aria-invalid={errorMessage ? "true" : "false"}
+              aria-required="true"
             />
+            <span id="email-help" className="sr-only">
+              Ingresa una dirección de correo electrónico válida para iniciar sesión
+            </span>
           </div>
 
           <div className={styles.formGroup}>
-            <label>Contraseña</label>
+            <label htmlFor="password-input">Contraseña</label>
             <input
+              id="password-input"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              aria-label="Ingresa tu contraseña"
+              aria-describedby="password-help"
+              aria-invalid={errorMessage ? "true" : "false"}
+              aria-required="true"
             />
+            <span id="password-help" className="sr-only">
+              Ingresa tu contraseña para acceder a tu cuenta
+            </span>
           </div>
 
           {/* Error message */}
           {errorMessage && (
-            <div>
-              <p>{errorMessage}</p>
+            <div
+              role="alert"
+              aria-live="polite"
+              aria-atomic="true"
+              aria-describedby="error-description"
+            >
+              <p id="error-description">{errorMessage}</p>
             </div>
           )}
 
-          <button type="submit" className={styles.submitButton}>
+          <button 
+            type="submit" 
+            className={styles.submitButton}
+            aria-label="Iniciar sesión con correo electrónico y contraseña"
+          >
             Iniciar Sesión
           </button>
         </form>

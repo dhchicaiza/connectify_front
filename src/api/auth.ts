@@ -62,6 +62,15 @@ export async function fetchLoginUserGoogle(idToken: string) {
   return response.json();
 }
 
+/**
+ * Authenticates a user with GitHub credentials.
+ *
+ * @async
+ * @function fetchUserGit
+ * @param {string} idToken - Firebase GitHub ID token obtained on the client.
+ * @returns {Promise<any>} - JSON response from the server containing token/user information.
+ * @throws {Error} - Propagates network or parsing errors to the caller.
+ */
 export async function fetchUserGit(idToken: string) {
   const response = await fetch(`${API}/auth/github`, {
     method: "POST",

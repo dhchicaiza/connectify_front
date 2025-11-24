@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Meeting.module.scss";
 import { connectToChat, disconnectSocket, getSocket } from "../../sockets/socketManager";
 import useAuthStore from "../../stores/useAuthStore";
-import { leaveMeeting } from "../../api/meetings";
+import { leaveMeeting, getMeetingById, joinMeeting } from "../../api/meetings";
+import { fetchUserProfile } from "../../api/user";
 
 /**
  * Interface for chat messages.
@@ -13,6 +14,15 @@ interface ChatMessage {
   text: string;
   room: string;
   time: string;
+}
+
+/**
+ * Interface for meeting participants with display information.
+ */
+interface ParticipantDisplay {
+  userId: string;
+  name: string;
+  initials: string;
 }
 
 /**
@@ -31,15 +41,148 @@ const ActiveMeeting: React.FC = () => {
   const [message, setMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
+  const [participants, setParticipants] = useState<ParticipantDisplay[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const userName = user?.displayName || user?.firstName || "Usuario";
+
+  // Fetch current user ID from profile
+  useEffect(() => {
+    const getCurrentUserId = async () => {
+      try {
+        const profile = await fetchUserProfile();
+        if (profile?.data?.id) {
+          setCurrentUserId(profile.data.id);
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
+    };
+    
+    if (user) {
+      getCurrentUserId();
+    }
+  }, [user]);
+
+  /**
+   * Generates initials from a name string.
+   * Takes first letter of first name and first letter of last name.
+   * If only one word, takes first two letters.
+   */
+  const generateInitials = (name: string): string => {
+    if (!name || name.trim().length === 0) {
+      return "??";
+    }
+    
+    const words = name.trim().split(/\s+/);
+    if (words.length >= 2) {
+      // First letter of first name + first letter of last name
+      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+    } else if (words[0].length >= 2) {
+      // If only one word, take first two letters
+      return words[0].substring(0, 2).toUpperCase();
+    } else {
+      // If single character, duplicate it
+      return (words[0][0] + words[0][0]).toUpperCase();
+    }
+  };
+
+  /**
+   * Fetches meeting participants and updates the state.
+   */
+  const fetchParticipants = useCallback(async () => {
+    if (!roomId) return;
+
+    try {
+      const meeting = await getMeetingById(roomId);
+      const activeParticipants = meeting.participants.filter(p => p.active);
+      
+      console.log("📊 Fetching participants:", {
+        totalParticipants: meeting.participants.length,
+        activeParticipants: activeParticipants.length,
+        currentUserId,
+        participants: activeParticipants.map(p => ({ userId: p.userId, active: p.active }))
+      });
+      
+      const participantsWithInfo: ParticipantDisplay[] = activeParticipants.map((p) => {
+        // Check if this participant is the current user using userId (UUID)
+        const isCurrentUser = currentUserId && p.userId === currentUserId;
+        
+        if (isCurrentUser && user) {
+          // Use current user's info from the store
+          const displayName = user.displayName || 
+                            (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null) ||
+                            user.firstName ||
+                            user.email?.split('@')[0] ||
+                            "Usuario";
+          return {
+            userId: p.userId,
+            name: displayName,
+            initials: generateInitials(displayName),
+          };
+        }
+        
+        // For other participants, we need to get their info
+        // For now, use a generic name based on userId
+        // TODO: In the future, we could fetch user info by ID from the API
+        const participantName = `Usuario ${p.userId.substring(0, 8)}`;
+        
+        return {
+          userId: p.userId,
+          name: participantName,
+          initials: generateInitials(participantName),
+        };
+      });
+
+      console.log("✅ Participants processed:", participantsWithInfo);
+      setParticipants(participantsWithInfo);
+    } catch (error) {
+      console.error("❌ Error fetching participants:", error);
+      // If there's an error, at least show the current user
+      if (user) {
+        const displayName = user.displayName || 
+                          (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null) ||
+                          user.firstName ||
+                          user.email?.split('@')[0] ||
+                          "Usuario";
+        setParticipants([{
+          userId: currentUserId || "current",
+          name: displayName,
+          initials: generateInitials(displayName),
+        }]);
+      }
+    }
+  }, [roomId, user, currentUserId]);
 
   useEffect(() => {
     if (!roomId) {
       navigate("/meeting");
       return;
     }
+
+    // Join the meeting when component mounts (in case user navigated directly)
+    const joinMeetingOnMount = async () => {
+      try {
+        console.log("🔗 Joining meeting:", roomId);
+        await joinMeeting(roomId);
+        console.log("✅ Successfully joined meeting");
+      } catch (error) {
+        console.error("❌ Error joining meeting:", error);
+        // If join fails, still try to fetch participants (user might already be in)
+      }
+    };
+
+    joinMeetingOnMount();
+
+    // Fetch participants immediately
+    fetchParticipants();
+
+    // Set up polling to update participants every 2 seconds for faster updates
+    const participantsInterval = setInterval(() => {
+      console.log("🔄 Polling participants...");
+      fetchParticipants();
+    }, 2000);
 
     // Connect to chat server
     const socket = connectToChat(roomId);
@@ -77,18 +220,32 @@ const ActiveMeeting: React.FC = () => {
           return [...prev, msg];
         });
       });
+
+      // Listen for user join/leave events if available
+      socket.on("userJoined", () => {
+        console.log("User joined, refreshing participants");
+        fetchParticipants();
+      });
+
+      socket.on("userLeft", () => {
+        console.log("User left, refreshing participants");
+        fetchParticipants();
+      });
     }
 
     // Cleanup on unmount
     return () => {
+      clearInterval(participantsInterval);
       socket.off("receiveMessage");
+      socket.off("userJoined");
+      socket.off("userLeft");
       socket.off("connect");
       if (roomId) {
         leaveMeeting(roomId).catch(console.error);
       }
       disconnectSocket();
     };
-  }, [roomId, navigate]);
+  }, [roomId, navigate, user, fetchParticipants]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -187,19 +344,12 @@ const ActiveMeeting: React.FC = () => {
     }
   };
 
-  const participants = [
-    { initials: "LS", name: "Laura Salazar" },
-    { initials: "CL", name: "Cristian Llanos" },
-    { initials: "DC", name: "David Chicaiza" },
-    { initials: "DG", name: "David Guerrero" },
-    { initials: "JM", name: "Jhonier Mendez" },
-  ];
 
   return (
     <div className={styles.meetingPage}>
       {/* Header de la reunión */}
       <header className={styles.meetingHeader}>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 className={styles.meetingTitle}>Reunión de Equipo</h1>
           {roomId && (
             <p className={styles.roomId}>ID: {roomId}</p>
@@ -218,13 +368,21 @@ const ActiveMeeting: React.FC = () => {
       >
         {/* Grid de participantes */}
         <div className={styles.participantsGrid}>
-          {participants.map((participant, index) => (
-            <div key={index} className={styles.participantCard}>
+          {participants.length === 0 ? (
+            <div className={styles.participantCard}>
               <div className={styles.participantInitials}>
-                {participant.initials}
+                {generateInitials(userName)}
               </div>
             </div>
-          ))}
+          ) : (
+            participants.map((participant) => (
+              <div key={participant.userId} className={styles.participantCard}>
+                <div className={styles.participantInitials}>
+                  {participant.initials}
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Controles */}
@@ -309,9 +467,17 @@ const ActiveMeeting: React.FC = () => {
         </div>
       </div>
 
+      {/* Overlay para móviles cuando el chat está abierto */}
+      {showChat && (
+        <div 
+          className={`${styles.chatOverlay} ${styles.chatOpen}`}
+          onClick={() => setShowChat(false)}
+        />
+      )}
+
       {/* Sidebar de chat */}
       {showChat && (
-        <div className={styles.chatSidebar}>
+        <div className={`${styles.chatSidebar} ${styles.chatOpen}`}>
           <div className={styles.chatHeader}>
             <div>
               <h2 className={styles.chatTitle}>Chat</h2>

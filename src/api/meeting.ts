@@ -1,5 +1,13 @@
 import { API, getAuthHeaders, handleApiError } from "./utils";
 
+/**
+ * Creates a new meeting with a maximum of 10 participants.
+ *
+ * @async
+ * @function fetchIdMeet
+ * @returns {Promise<any>} The created meeting data including the meeting ID.
+ * @throws {Error} Throws an error if the request fails or returns a non-OK status.
+ */
 export async function fetchIdMeet() {
   try {
     let maxParticipants = 10;

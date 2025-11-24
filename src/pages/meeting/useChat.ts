@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import useAuthStore from "../../stores/useAuthStore";
 
+/**
+ * Interface for chat messages exchanged in real-time.
+ */
 export interface Message {
   user: string;
   text: string;
@@ -9,8 +12,18 @@ export interface Message {
   room?: string;
 }
 
+/**
+ * Chat server API URL loaded from environment variables.
+ */
 export const API_CHAT = import.meta.env.VITE_CHAT_URL
 
+/**
+ * Custom React hook for managing real-time chat functionality in meetings.
+ * Handles socket connection, message sending/receiving, and state management.
+ * 
+ * @param {string | undefined} meetingId - The meeting/room ID to connect to.
+ * @returns {Object} Object containing messages, messageText, setMessageText, sendMessage, and username.
+ */
 export function useChat(meetingId: string | undefined) {
   const chatSocket = useRef<Socket | null>(null);
 

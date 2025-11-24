@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/layout/Header";
 import styles from "./Meeting.module.scss";
@@ -19,6 +19,9 @@ const Meeting: React.FC = () => {
   const [createdRoomId, setCreatedRoomId] = useState("");
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const newTabRef = useRef<HTMLButtonElement>(null);
+  const joinTabRef = useRef<HTMLButtonElement>(null);
+  const roomIdInputRef = useRef<HTMLInputElement>(null);
 
   /**
    * Handles creating a new meeting and navigating to it.
@@ -87,24 +90,73 @@ const Meeting: React.FC = () => {
     // You could show a toast notification here
   };
 
+  /**
+   * Handles keyboard navigation for tabs (Arrow keys for operable accessibility).
+   * WCAG 2.1.1 - Keyboard Accessible
+   */
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, tab: "new" | "join") => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      const nextTab = tab === "new" ? "join" : "new";
+      setActiveTab(nextTab);
+      // Focus management for keyboard navigation
+      setTimeout(() => {
+        if (nextTab === "new" && newTabRef.current) {
+          newTabRef.current.focus();
+        } else if (nextTab === "join" && joinTabRef.current) {
+          joinTabRef.current.focus();
+        }
+      }, 0);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setActiveTab("new");
+      newTabRef.current?.focus();
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setActiveTab("join");
+      joinTabRef.current?.focus();
+    }
+  };
+
+  /**
+   * Focus management: when switching to join tab, focus the input field.
+   */
+  useEffect(() => {
+    if (activeTab === "join" && roomIdInputRef.current) {
+      roomIdInputRef.current.focus();
+    }
+  }, [activeTab]);
+
   return (
     <div className={styles.meetingPage}>
       <Header />
       <div className={styles.content}>
         <div className={styles.card}>
           {activeTab === "new" ? (
-            <>
+            <div role="tabpanel" id="new-meeting-panel" aria-labelledby="new-tab">
               <h1 className={styles.title}>¿Listo para Conectar?</h1>
-              <p className={styles.subtitle}>
+              <p 
+                className={styles.subtitle}
+                id="new-meeting-description"
+              >
                 Inicia una nueva reunión en segundos
               </p>
               {error && (
-                <div className={styles.errorMessage}>{error}</div>
+                <div 
+                  className={styles.errorMessage}
+                  role="alert"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {error}
+                </div>
               )}
               <button
                 onClick={handleNewMeeting}
                 className={styles.actionButton}
                 disabled={isLoading}
+                aria-label="Crear una nueva reunión de videoconferencia"
+                aria-describedby="new-meeting-description"
               >
                 <svg
                   className={styles.cameraIcon}
@@ -121,18 +173,32 @@ const Meeting: React.FC = () => {
                 </svg>
                 <span>{isLoading ? "Creando..." : "Nueva Reunión"}</span>
               </button>
-            </>
+            </div>
           ) : (
-            <>
+            <div role="tabpanel" id="join-meeting-panel" aria-labelledby="join-tab">
               <h1 className={styles.title}>Unirse a la Sala</h1>
-              <p className={styles.subtitle}>
+              <p 
+                className={styles.subtitle}
+                id="join-meeting-description"
+              >
                 Ingresa el ID de la reunión
               </p>
               {error && (
-                <div className={styles.errorMessage}>{error}</div>
+                <div 
+                  className={styles.errorMessage}
+                  role="alert"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {error}
+                </div>
               )}
               <form onSubmit={handleJoinRoom} className={styles.form}>
+                <label htmlFor="room-id-input" className="sr-only">
+                  ID de la reunión
+                </label>
                 <input
+                  id="room-id-input"
                   type="text"
                   value={roomId}
                   onChange={(e) => {
@@ -143,11 +209,20 @@ const Meeting: React.FC = () => {
                   className={styles.roomIdInput}
                   required
                   disabled={isLoading}
+                  ref={roomIdInputRef}
+                  aria-label="Ingresa el ID de la reunión a la que deseas unirte"
+                  aria-describedby="join-meeting-description room-id-help"
+                  aria-invalid={error ? "true" : "false"}
+                  aria-required="true"
                 />
+                <span id="room-id-help" className="sr-only">
+                  El ID de la reunión es un código alfanumérico que te proporciona el organizador de la reunión
+                </span>
                 <button
                   type="submit"
                   className={styles.actionButton}
                   disabled={isLoading}
+                  aria-label="Unirse a la reunión con el ID ingresado"
                 >
                   <svg
                     className={styles.cameraIcon}
@@ -165,19 +240,33 @@ const Meeting: React.FC = () => {
                   <span>{isLoading ? "Uniéndose..." : "Ingresar"}</span>
                 </button>
               </form>
-            </>
+            </div>
           )}
 
-          <div className={styles.tabButtons}>
+          <div className={styles.tabButtons} role="tablist" aria-label="Opciones de reunión">
             <button
+              ref={newTabRef}
               className={`${styles.tabButton} ${activeTab === "new" ? styles.active : ""}`}
               onClick={() => setActiveTab("new")}
+              onKeyDown={(e) => handleTabKeyDown(e, "new")}
+              role="tab"
+              aria-selected={activeTab === "new"}
+              aria-controls="new-meeting-panel"
+              id="new-tab"
+              tabIndex={activeTab === "new" ? 0 : -1}
             >
               Nueva Reunión
             </button>
             <button
+              ref={joinTabRef}
               className={`${styles.tabButton} ${activeTab === "join" ? styles.active : ""}`}
               onClick={() => setActiveTab("join")}
+              onKeyDown={(e) => handleTabKeyDown(e, "join")}
+              role="tab"
+              aria-selected={activeTab === "join"}
+              aria-controls="join-meeting-panel"
+              id="join-tab"
+              tabIndex={activeTab === "join" ? 0 : -1}
             >
               Unirse a Sala
             </button>
@@ -210,6 +299,7 @@ const Meeting: React.FC = () => {
                 borderRadius: "4px",
                 cursor: "pointer",
               }}
+              aria-label="Copiar el ID de la reunión al portapapeles"
             >
               Copiar ID
             </button>

@@ -1,15 +1,6 @@
 import type { HandleApiErrorOptions } from "../types/utils";
 
-const envApiUrl = import.meta.env.VITE_API_URL;
-export const API = envApiUrl || "http://localhost:3000/api";
-
-// Warn if using localhost fallback (might not work for remote connections)
-if (!envApiUrl && import.meta.env.MODE === "development") {
-  console.warn("⚠️ ADVERTENCIA: VITE_API_URL no está configurado en .env");
-  console.warn("   Usando fallback: http://localhost:3000/api");
-  console.warn("   Si trabajas en red local, crea un archivo .env con:");
-  console.warn("   VITE_API_URL=http://[IP_DEL_SERVIDOR]:3000/api");
-}
+export const API = import.meta.env.VITE_API_BASE_URL;
 
 /**
  * Retrieves the authentication token from localStorage.
