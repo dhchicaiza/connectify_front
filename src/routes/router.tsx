@@ -6,10 +6,14 @@ import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import Profile from "../pages/profile/Profile";
-import UserHome from "../pages/UserHome";
 import Meeting from "../pages/meeting/Meeting";
 import ActiveMeeting from "../pages/meeting/ActiveMeeting";
+import NotFound from "../pages/NotFound";
 
+/**
+ * Application route configuration array.
+ * Defines all available routes and their corresponding React components.
+ */
 export const routes = [
     {
         path: "/",
@@ -40,10 +44,6 @@ export const routes = [
         element: <Profile />,
     },
     {
-        path: "/userhome",
-        element: <UserHome/>
-    },
-    {
         path: "/meeting",
         element: <Meeting />,
     },
@@ -51,6 +51,18 @@ export const routes = [
         path: "/active-meeting",
         element: <ActiveMeeting />,
     },
+    {
+        path: "/meet/:id",
+        element: <ActiveMeeting />,
+    },
+    {
+        path: "*",
+        element: <NotFound />,
+    },
 ]
 
+/**
+ * Browser router instance configured with the application routes.
+ * Used by React Router to handle client-side navigation.
+ */
 export const router = createBrowserRouter(routes);

@@ -35,6 +35,12 @@ type AuthStore = {
   logout: () => Promise<void>;
 };
 
+/**
+ * Checks if a user object is missing backend profile data (firstName, lastName, age).
+ * 
+ * @param {User | null} user - The user object to check.
+ * @returns {boolean} True if the user is null or missing any required profile fields, false otherwise.
+ */
 const needsBackendProfile = (user: User | null): boolean => {
   if (!user) {
     return true;
@@ -53,7 +59,11 @@ const needsBackendProfile = (user: User | null): boolean => {
  */
 const useAuthStore = create<AuthStore>()((set) => ({
   user: null,
-  // setUser ahora acepta la interfaz extendida 'User'
+  /**
+   * Updates the current user in the auth store.
+   * 
+   * @param {User} user - The user object to set in the store.
+   */
   setUser: (user: User) => set({ user }),
 
   /**
@@ -178,6 +188,10 @@ const useAuthStore = create<AuthStore>()((set) => ({
     }
   },
 
+  /**
+   * Signs the user in with GitHub via Firebase and completes the flow
+   * by exchanging the token with the backend.
+   */
   loginWithGit: async () => {
     try {
       console.log("ESta pasando po r aqui");
@@ -215,6 +229,10 @@ const useAuthStore = create<AuthStore>()((set) => ({
     }
   },
 
+  /**
+   * Signs the user out from Firebase and clears local authentication state.
+   * Cleans up the token from localStorage and resets the user in the store.
+   */
   logout: async () => {
     try {
       await signOut(auth);

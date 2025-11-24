@@ -1,58 +1,388 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Meeting.module.scss";
+import { connectToChat, disconnectSocket, getSocket } from "../../sockets/socketManager";
+import useAuthStore from "../../stores/useAuthStore";
+import { leaveMeeting, getMeetingById, joinMeeting } from "../../api/meetings";
+import { fetchUserProfile } from "../../api/user";
 
+/**
+ * Interface for chat messages.
+ */
+interface ChatMessage {
+  user: string;
+  text: string;
+  room: string;
+  time: string;
+}
+
+/**
+ * Interface for meeting participants with display information.
+ */
+interface ParticipantDisplay {
+  userId: string;
+  name: string;
+  initials: string;
+}
+
+/**
+ * Active meeting page component that displays video participants,
+ * controls, and a real-time chat sidebar.
+ */
 const ActiveMeeting: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const roomId = searchParams.get("roomId") || "";
+  const { user } = useAuthStore();
+  
   const [showChat, setShowChat] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoOff, setIsVideoOff] = useState(false);
-  const [message, setMessage] = useState("Buenas tardes");
-  const navigate = useNavigate();
+  const [message, setMessage] = useState("");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
+  const [participants, setParticipants] = useState<ParticipantDisplay[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleExit = () => {
-    navigate("/");
+  const userName = user?.displayName || user?.firstName || "Usuario";
+
+  // Fetch current user ID from profile
+  useEffect(() => {
+    const getCurrentUserId = async () => {
+      try {
+        const profile = await fetchUserProfile();
+        if (profile?.data?.id) {
+          setCurrentUserId(profile.data.id);
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
+    };
+    
+    if (user) {
+      getCurrentUserId();
+    }
+  }, [user]);
+
+  /**
+   * Generates initials from a name string.
+   * Takes first letter of first name and first letter of last name.
+   * If only one word, takes first two letters.
+   */
+  const generateInitials = (name: string): string => {
+    if (!name || name.trim().length === 0) {
+      return "??";
+    }
+    
+    const words = name.trim().split(/\s+/);
+    if (words.length >= 2) {
+      // First letter of first name + first letter of last name
+      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+    } else if (words[0].length >= 2) {
+      // If only one word, take first two letters
+      return words[0].substring(0, 2).toUpperCase();
+    } else {
+      // If single character, duplicate it
+      return (words[0][0] + words[0][0]).toUpperCase();
+    }
   };
 
+  /**
+   * Fetches meeting participants and updates the state.
+   */
+  const fetchParticipants = useCallback(async () => {
+    if (!roomId) return;
+
+    try {
+      const meeting = await getMeetingById(roomId);
+      const activeParticipants = meeting.participants.filter(p => p.active);
+      
+      console.log("📊 Fetching participants:", {
+        totalParticipants: meeting.participants.length,
+        activeParticipants: activeParticipants.length,
+        currentUserId,
+        participants: activeParticipants.map(p => ({ userId: p.userId, active: p.active }))
+      });
+      
+      const participantsWithInfo: ParticipantDisplay[] = activeParticipants.map((p) => {
+        // Check if this participant is the current user using userId (UUID)
+        const isCurrentUser = currentUserId && p.userId === currentUserId;
+        
+        if (isCurrentUser && user) {
+          // Use current user's info from the store
+          const displayName = user.displayName || 
+                            (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null) ||
+                            user.firstName ||
+                            user.email?.split('@')[0] ||
+                            "Usuario";
+          return {
+            userId: p.userId,
+            name: displayName,
+            initials: generateInitials(displayName),
+          };
+        }
+        
+        // For other participants, we need to get their info
+        // For now, use a generic name based on userId
+        // TODO: In the future, we could fetch user info by ID from the API
+        const participantName = `Usuario ${p.userId.substring(0, 8)}`;
+        
+        return {
+          userId: p.userId,
+          name: participantName,
+          initials: generateInitials(participantName),
+        };
+      });
+
+      console.log("✅ Participants processed:", participantsWithInfo);
+      setParticipants(participantsWithInfo);
+    } catch (error) {
+      console.error("❌ Error fetching participants:", error);
+      // If there's an error, at least show the current user
+      if (user) {
+        const displayName = user.displayName || 
+                          (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null) ||
+                          user.firstName ||
+                          user.email?.split('@')[0] ||
+                          "Usuario";
+        setParticipants([{
+          userId: currentUserId || "current",
+          name: displayName,
+          initials: generateInitials(displayName),
+        }]);
+      }
+    }
+  }, [roomId, user, currentUserId]);
+
+  useEffect(() => {
+    if (!roomId) {
+      navigate("/meeting");
+      return;
+    }
+
+    // Join the meeting when component mounts (in case user navigated directly)
+    const joinMeetingOnMount = async () => {
+      try {
+        console.log("🔗 Joining meeting:", roomId);
+        await joinMeeting(roomId);
+        console.log("✅ Successfully joined meeting");
+      } catch (error) {
+        console.error("❌ Error joining meeting:", error);
+        // If join fails, still try to fetch participants (user might already be in)
+      }
+    };
+
+    joinMeetingOnMount();
+
+    // Fetch participants immediately
+    fetchParticipants();
+
+    // Set up polling to update participants every 2 seconds for faster updates
+    const participantsInterval = setInterval(() => {
+      console.log("🔄 Polling participants...");
+      fetchParticipants();
+    }, 2000);
+
+    // Connect to chat server
+    const socket = connectToChat(roomId);
+
+    // Wait for connection before setting up listeners
+    if (socket.connected) {
+      setIsSocketConnected(true);
+      setupSocketListeners(socket);
+    } else {
+      socket.on("connect", () => {
+        console.log("Socket connected, setting up listeners");
+        setIsSocketConnected(true);
+        setupSocketListeners(socket);
+      });
+    }
+
+    socket.on("disconnect", () => {
+      console.log("Socket disconnected");
+      setIsSocketConnected(false);
+    });
+
+    // Listen for incoming messages
+    function setupSocketListeners(socket: any) {
+      socket.on("receiveMessage", (msg: ChatMessage) => {
+        console.log("Message received:", msg);
+        setChatMessages((prev) => {
+          // Avoid duplicates by checking timestamp and user
+          const exists = prev.some(
+            (m) => m.time === msg.time && m.user === msg.user && m.text === msg.text
+          );
+          if (exists) {
+            console.log("Duplicate message ignored");
+            return prev;
+          }
+          return [...prev, msg];
+        });
+      });
+
+      // Listen for user join/leave events if available
+      socket.on("userJoined", () => {
+        console.log("User joined, refreshing participants");
+        fetchParticipants();
+      });
+
+      socket.on("userLeft", () => {
+        console.log("User left, refreshing participants");
+        fetchParticipants();
+      });
+    }
+
+    // Cleanup on unmount
+    return () => {
+      clearInterval(participantsInterval);
+      socket.off("receiveMessage");
+      socket.off("userJoined");
+      socket.off("userLeft");
+      socket.off("connect");
+      if (roomId) {
+        leaveMeeting(roomId).catch(console.error);
+      }
+      disconnectSocket();
+    };
+  }, [roomId, navigate, user, fetchParticipants]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  /**
+   * Handles exiting the meeting and cleaning up resources.
+   */
+  const handleExit = async () => {
+    if (roomId) {
+      try {
+        await leaveMeeting(roomId);
+      } catch (error) {
+        console.error("Error leaving meeting:", error);
+      }
+    }
+    disconnectSocket();
+    navigate("/meeting");
+  };
+
+  /**
+   * Handles sending a chat message via socket.
+   */
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    // Aquí se enviaría el mensaje
-    setMessage("");
+    const trimmedMessage = message.trim();
+
+    if (!trimmedMessage || !roomId) {
+      return;
+    }
+
+    const socket = getSocket();
+    if (!socket) {
+      console.error("Socket instance not found, attempting to reconnect...");
+      // Try to reconnect
+      const newSocket = connectToChat(roomId);
+      setTimeout(() => {
+        if (newSocket.connected) {
+          sendMessageToSocket(newSocket, trimmedMessage);
+        } else {
+          alert("No se pudo conectar al servidor de chat. Verifica que el servidor esté corriendo en el puerto 3001.");
+        }
+      }, 1000);
+      return;
+    }
+
+    if (!socket.connected) {
+      console.error("Socket not connected, attempting to reconnect...");
+      socket.connect();
+      // Wait a bit and try again
+      setTimeout(() => {
+        if (socket?.connected) {
+          sendMessageToSocket(socket, trimmedMessage);
+        } else {
+          alert("No se pudo conectar al servidor de chat. Verifica que el servidor esté corriendo en el puerto 3001.");
+        }
+      }, 1000);
+      return;
+    }
+
+    sendMessageToSocket(socket, trimmedMessage);
   };
 
-  const participants = [
-    { initials: "LS", name: "Laura Salazar" },
-    { initials: "CL", name: "Cristian Llanos" },
-    { initials: "DC", name: "David Chicaiza" },
-    { initials: "DG", name: "David Guerrero" },
-    { initials: "JM", name: "Jhonier Mendez" },
-  ];
+  /**
+   * Sends a message through the socket connection.
+   */
+  const sendMessageToSocket = (socket: any, text: string) => {
+    const timestamp = new Date().toISOString();
+    const newMessage: ChatMessage = {
+      user: userName,
+      text: text,
+      room: roomId,
+      time: timestamp,
+    };
 
-  const chatMessages = [
-    { user: "Jhonier Mendez", time: "2:00", text: "Buenas tardes" },
-    { user: "Cristian Llanos", time: "2:01", text: "Hola" },
-  ];
+    console.log("Sending message:", newMessage);
+    console.log("Socket connected:", socket.connected);
+    console.log("Socket ID:", socket.id);
+    
+    // Optimistic update: show message immediately
+    setChatMessages((prev) => [...prev, newMessage]);
+    setMessage("");
+
+    // Send to server
+    try {
+      socket.emit("sendMessage", newMessage);
+      console.log("Message emitted to server");
+    } catch (error) {
+      console.error("Error emitting message:", error);
+      // Remove the optimistic message if send failed
+      setChatMessages((prev) => 
+        prev.filter((m) => !(m.time === timestamp && m.user === userName && m.text === text))
+      );
+      alert("Error al enviar el mensaje. Por favor, intenta de nuevo.");
+    }
+  };
+
 
   return (
     <div className={styles.meetingPage}>
       {/* Header de la reunión */}
       <header className={styles.meetingHeader}>
-        <h1 className={styles.meetingTitle}>Reunión de Equipo</h1>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 className={styles.meetingTitle}>Reunión de Equipo</h1>
+          {roomId && (
+            <p className={styles.roomId}>ID: {roomId}</p>
+          )}
+        </div>
         <button onClick={handleExit} className={styles.exitButton}>
           Salir
         </button>
       </header>
 
       {/* Contenido principal */}
-      <div className={`${styles.meetingContent} ${showChat ? styles.withChat : ""}`}>
+      <div
+        className={`${styles.meetingContent} ${
+          showChat ? styles.withChat : ""
+        }`}
+      >
         {/* Grid de participantes */}
         <div className={styles.participantsGrid}>
-          {participants.map((participant, index) => (
-            <div key={index} className={styles.participantCard}>
+          {participants.length === 0 ? (
+            <div className={styles.participantCard}>
               <div className={styles.participantInitials}>
-                {participant.initials}
+                {generateInitials(userName)}
               </div>
             </div>
-          ))}
+          ) : (
+            participants.map((participant) => (
+              <div key={participant.userId} className={styles.participantCard}>
+                <div className={styles.participantInitials}>
+                  {participant.initials}
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Controles */}
@@ -95,7 +425,9 @@ const ActiveMeeting: React.FC = () => {
 
           <button
             onClick={() => setIsVideoOff(!isVideoOff)}
-            className={`${styles.controlButton} ${isVideoOff ? styles.videoOff : ""}`}
+            className={`${styles.controlButton} ${
+              isVideoOff ? styles.videoOff : ""
+            }`}
           >
             <svg
               className={styles.controlIcon}
@@ -114,7 +446,9 @@ const ActiveMeeting: React.FC = () => {
 
           <button
             onClick={() => setShowChat(!showChat)}
-            className={`${styles.controlButton} ${showChat ? styles.active : ""}`}
+            className={`${styles.controlButton} ${
+              showChat ? styles.active : ""
+            }`}
           >
             <svg
               className={styles.controlIcon}
@@ -133,11 +467,24 @@ const ActiveMeeting: React.FC = () => {
         </div>
       </div>
 
+      {/* Overlay para móviles cuando el chat está abierto */}
+      {showChat && (
+        <div 
+          className={`${styles.chatOverlay} ${styles.chatOpen}`}
+          onClick={() => setShowChat(false)}
+        />
+      )}
+
       {/* Sidebar de chat */}
       {showChat && (
-        <div className={styles.chatSidebar}>
+        <div className={`${styles.chatSidebar} ${styles.chatOpen}`}>
           <div className={styles.chatHeader}>
-            <h2 className={styles.chatTitle}>Integrantes</h2>
+            <div>
+              <h2 className={styles.chatTitle}>Chat</h2>
+              <div style={{ fontSize: "0.75rem", color: isSocketConnected ? "#10b981" : "#ef4444" }}>
+                {isSocketConnected ? "● Conectado" : "● Desconectado"}
+              </div>
+            </div>
             <button
               onClick={() => setShowChat(false)}
               className={styles.closeChatButton}
@@ -159,15 +506,31 @@ const ActiveMeeting: React.FC = () => {
           </div>
 
           <div className={styles.chatMessages}>
-            {chatMessages.map((msg, index) => (
-              <div key={index} className={styles.chatMessage}>
-                <div className={styles.messageHeader}>
-                  <span className={styles.messageUser}>{msg.user}</span>
-                  <span className={styles.messageTime}>{msg.time}</span>
-                </div>
-                <div className={styles.messageBubble}>{msg.text}</div>
-              </div>
-            ))}
+            {chatMessages.length === 0 ? (
+              <p className={styles.emptyChat}>No hay mensajes aún. ¡Sé el primero en escribir!</p>
+            ) : (
+              chatMessages.map((msg, index) => {
+                const messageTime = new Date(msg.time).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                const isOwnMessage = msg.user === userName;
+
+                return (
+                  <div
+                    key={`${msg.time}-${index}`}
+                    className={`${styles.chatMessage} ${isOwnMessage ? styles.ownMessage : ""}`}
+                  >
+                    <div className={styles.messageHeader}>
+                      <span className={styles.messageUser}>{msg.user}</span>
+                      <span className={styles.messageTime}>{messageTime}</span>
+                    </div>
+                    <div className={styles.messageBubble}>{msg.text}</div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={messagesEndRef} />
           </div>
 
           <form onSubmit={handleSendMessage} className={styles.chatInputForm}>
@@ -178,7 +541,10 @@ const ActiveMeeting: React.FC = () => {
               className={styles.chatInput}
               placeholder="Escribe un mensaje..."
             />
-            <button type="submit" className={styles.sendButton}>
+            <button
+              type="submit"
+              className={styles.sendButton}
+            >
               <svg
                 className={styles.sendIcon}
                 fill="none"
@@ -201,4 +567,3 @@ const ActiveMeeting: React.FC = () => {
 };
 
 export default ActiveMeeting;
-

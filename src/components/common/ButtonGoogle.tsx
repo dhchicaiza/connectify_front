@@ -35,9 +35,14 @@ export const ButtonGoogle: React.FC<ButtonGoogleProps> = ({
       type="button"
       className={styles.socialButton}
       onClick={handleLoginGoogle}
+      aria-label="Iniciar sesión con Google"
+      aria-describedby="google-login-description"
     >
-      <span>G</span>
+      <span aria-hidden="true">G</span>
       <span>Google</span>
+      <span id="google-login-description" className="sr-only">
+        Abre una ventana emergente para autenticarte con tu cuenta de Google
+      </span>
     </button>
   );
 };

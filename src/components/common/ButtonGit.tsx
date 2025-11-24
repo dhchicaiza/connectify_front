@@ -9,6 +9,9 @@ interface ButtonGitProps {
   setErrorMessage: React.Dispatch<React.SetStateAction<string>>;
 }
 
+/**
+ * Renders the GitHub sign-in button and centralises the OAuth flow.
+ */
 export const ButtonGit: React.FC<ButtonGitProps> = (
   {setErrorMessage}
 ) => {

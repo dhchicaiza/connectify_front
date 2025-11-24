@@ -1,6 +1,6 @@
 import type { HandleApiErrorOptions } from "../types/utils";
 
-export const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+export const API = import.meta.env.VITE_API_BASE_URL;
 
 /**
  * Retrieves the authentication token from localStorage.
