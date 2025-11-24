@@ -8,6 +8,13 @@
   padding-bottom: 3rem;
   padding-left: 1rem;
   padding-right: 1rem;
+  
+  @media (max-width: 768px) {
+    padding-top: 5rem;
+    padding-bottom: 2rem;
+    // Asegurar espacio suficiente cuando aparece el teclado
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+  }
 }
 
 .container {
@@ -109,9 +116,14 @@
     border-radius: 0.5rem;
     border: 1px solid #4b5563;
     transition: border-color 0.3s;
+    font-size: 16px; // Previene zoom en iOS cuando se enfoca
 
     &:focus {
       border-color: #2dd4bf;
+      // Asegurar que el input sea visible cuando está enfocado en móviles
+      @media (max-width: 768px) {
+        scroll-margin-top: 1rem;
+      }
     }
   }
 }

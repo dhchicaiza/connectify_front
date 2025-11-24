@@ -14,6 +14,13 @@ body {
   font-family: 'Poppins', sans-serif;
   background-color: #111827;
   color: #ffffff;
+  
+  // Mejorar el comportamiento del viewport en móviles
+  @media (max-width: 768px) {
+    // Asegurar que el body pueda hacer scroll cuando aparece el teclado
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+  }
 }
 
 a {

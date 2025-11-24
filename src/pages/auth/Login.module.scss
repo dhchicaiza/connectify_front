@@ -5,6 +5,18 @@
   align-items: center;
   justify-content: center;
   padding: 3rem 1rem;
+  
+  // Ajustes para móviles cuando aparece el teclado
+  @media (max-width: 768px) {
+    padding: 1rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    
+    // Asegurar que el contenido sea scrolleable cuando aparece el teclado
+    min-height: -webkit-fill-available;
+    overflow-y: auto;
+  }
 }
 
 .loginCard {
@@ -14,6 +26,11 @@
   width: 100%;
   max-width: 28rem;
   border: 1px solid #374151;
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
 }
 
 .logoContainer {
@@ -124,9 +141,14 @@
     border-radius: 0.5rem;
     border: 1px solid #4b5563;
     transition: border-color 0.3s;
+    font-size: 16px; // Previene zoom en iOS cuando se enfoca
 
     &:focus {
       border-color: #2dd4bf;
+      // Asegurar que el input sea visible cuando está enfocado en móviles
+      @media (max-width: 768px) {
+        scroll-margin-top: 1rem;
+      }
     }
   }
 }
