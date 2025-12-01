@@ -3,8 +3,17 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Meeting.module.scss";
 import { connectToChat, disconnectSocket, getSocket } from "../../sockets/socketManager";
 import useAuthStore from "../../stores/useAuthStore";
-import { leaveMeeting, getMeetingById, joinMeeting } from "../../api/meetings";
+import { leaveMeeting, getMeetingById, joinMeeting, generateMeetingSummary } from "../../api/meetings";
+import type { MeetingSummary } from "../../api/meetings";
 import { fetchUserProfile } from "../../api/user";
+import {
+  initWebRTC,
+  disableOutgoingStream,
+  enableOutgoingStream,
+  disableOutgoingVideo,
+  enableOutgoingVideo,
+  getLocalStream
+} from "../../webrtc/webrtc";
 
 /**
  * Interface for chat messages.
@@ -43,7 +52,13 @@ const ActiveMeeting: React.FC = () => {
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [participants, setParticipants] = useState<ParticipantDisplay[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isWebRTCInitialized, setIsWebRTCInitialized] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [summary, setSummary] = useState<MeetingSummary | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
 
   const userName = user?.displayName || user?.firstName || "Usuario";
 
@@ -175,6 +190,28 @@ const ActiveMeeting: React.FC = () => {
 
     joinMeetingOnMount();
 
+    // Initialize WebRTC for audio and video
+    if (!isWebRTCInitialized && userName && roomId) {
+      console.log("🎙️ Initializing WebRTC audio and video...");
+      initWebRTC(roomId, userName)
+        .then(() => {
+          console.log("✅ WebRTC initialized successfully");
+          setIsWebRTCInitialized(true);
+          // Get and store local stream
+          const stream = getLocalStream();
+          if (stream) {
+            setLocalStream(stream);
+            console.log("📹 Local stream acquired:", {
+              videoTracks: stream.getVideoTracks().length,
+              audioTracks: stream.getAudioTracks().length
+            });
+          }
+        })
+        .catch((error) => {
+          console.error("❌ Failed to initialize WebRTC:", error);
+        });
+    }
+
     // Fetch participants immediately
     fetchParticipants();
 
@@ -245,12 +282,20 @@ const ActiveMeeting: React.FC = () => {
       }
       disconnectSocket();
     };
-  }, [roomId, navigate, user, fetchParticipants]);
+  }, [roomId, navigate, user, fetchParticipants, isWebRTCInitialized, userName]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  // Connect local stream to video element
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      console.log("📹 Local video element connected");
+    }
+  }, [localStream]);
 
   /**
    * Handles exiting the meeting and cleaning up resources.
@@ -311,6 +356,31 @@ const ActiveMeeting: React.FC = () => {
   };
 
   /**
+   * Generates AI summary for the meeting.
+   */
+  const handleGenerateSummary = async () => {
+    if (!roomId || chatMessages.length === 0) {
+      alert("No hay mensajes para generar un resumen.");
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+
+    try {
+      console.log("🤖 Generating AI summary...");
+      const generatedSummary = await generateMeetingSummary(roomId, chatMessages);
+      setSummary(generatedSummary);
+      setShowSummary(true);
+      console.log("✅ Summary generated successfully:", generatedSummary);
+    } catch (error) {
+      console.error("❌ Error generating summary:", error);
+      alert("Error al generar el resumen. Por favor, intenta de nuevo.");
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  /**
    * Sends a message through the socket connection.
    */
   const sendMessageToSocket = (socket: any, text: string) => {
@@ -355,9 +425,19 @@ const ActiveMeeting: React.FC = () => {
             <p className={styles.roomId}>ID: {roomId}</p>
           )}
         </div>
-        <button onClick={handleExit} className={styles.exitButton}>
-          Salir
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button
+            onClick={handleGenerateSummary}
+            className={styles.summaryButton}
+            disabled={isGeneratingSummary || chatMessages.length === 0}
+            title={chatMessages.length === 0 ? "No hay mensajes para resumir" : "Generar resumen con IA"}
+          >
+            {isGeneratingSummary ? "Generando..." : "📝 Resumen IA"}
+          </button>
+          <button onClick={handleExit} className={styles.exitButton}>
+            Salir
+          </button>
+        </div>
       </header>
 
       {/* Contenido principal */}
@@ -368,27 +448,73 @@ const ActiveMeeting: React.FC = () => {
       >
         {/* Grid de participantes */}
         <div className={styles.participantsGrid}>
-          {participants.length === 0 ? (
-            <div className={styles.participantCard}>
+          {/* Local user video */}
+          <div className={styles.participantCard}>
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={styles.participantVideo}
+              style={{
+                display: isVideoOff ? 'none' : 'block',
+                transform: 'scaleX(-1)' // Mirror local video
+              }}
+            />
+            {isVideoOff && (
               <div className={styles.participantInitials}>
                 {generateInitials(userName)}
               </div>
-            </div>
-          ) : (
-            participants.map((participant) => (
-              <div key={participant.userId} className={styles.participantCard}>
-                <div className={styles.participantInitials}>
-                  {participant.initials}
+            )}
+            <div className={styles.participantName}>{userName} (Tú)</div>
+          </div>
+
+          {/* Remote participants */}
+          {participants
+            .filter(p => currentUserId && p.userId !== currentUserId)
+            .map((participant) => {
+              const videoEl = document.getElementById(`${participant.userId}_video`) as HTMLVideoElement;
+              const hasVideo = videoEl && videoEl.srcObject;
+
+              return (
+                <div key={participant.userId} className={styles.participantCard}>
+                  {hasVideo ? (
+                    <video
+                      id={`display_${participant.userId}_video`}
+                      autoPlay
+                      playsInline
+                      className={styles.participantVideo}
+                      ref={(el) => {
+                        if (el && videoEl && videoEl.srcObject) {
+                          el.srcObject = videoEl.srcObject;
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className={styles.participantInitials}>
+                      {participant.initials}
+                    </div>
+                  )}
+                  <div className={styles.participantName}>{participant.name}</div>
                 </div>
-              </div>
-            ))
-          )}
+              );
+            })}
         </div>
 
         {/* Controles */}
         <div className={styles.controls}>
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={() => {
+              if (isMuted) {
+                enableOutgoingStream();
+                setIsMuted(false);
+                console.log("🎤 Microphone enabled");
+              } else {
+                disableOutgoingStream();
+                setIsMuted(true);
+                console.log("🔇 Microphone disabled");
+              }
+            }}
             className={`${styles.controlButton} ${isMuted ? styles.muted : ""}`}
           >
             <svg
@@ -424,7 +550,17 @@ const ActiveMeeting: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setIsVideoOff(!isVideoOff)}
+            onClick={() => {
+              if (isVideoOff) {
+                enableOutgoingVideo();
+                setIsVideoOff(false);
+                console.log("📹 Camera enabled");
+              } else {
+                disableOutgoingVideo();
+                setIsVideoOff(true);
+                console.log("📹 Camera disabled");
+              }
+            }}
             className={`${styles.controlButton} ${
               isVideoOff ? styles.videoOff : ""
             }`}
@@ -561,6 +697,74 @@ const ActiveMeeting: React.FC = () => {
             </button>
           </form>
         </div>
+      )}
+
+      {/* Modal de resumen IA */}
+      {showSummary && summary && (
+        <>
+          <div
+            className={styles.summaryOverlay}
+            onClick={() => setShowSummary(false)}
+          />
+          <div className={styles.summaryModal}>
+            <div className={styles.summaryHeader}>
+              <h2 className={styles.summaryTitle}>Resumen de la Reunión (IA)</h2>
+              <button
+                onClick={() => setShowSummary(false)}
+                className={styles.closeSummaryButton}
+              >
+                <svg
+                  className={styles.closeIcon}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className={styles.summaryContent}>
+              <div className={styles.summarySection}>
+                <h3 className={styles.summarySectionTitle}>Resumen General</h3>
+                <p className={styles.summaryText}>{summary.summary}</p>
+              </div>
+
+              {summary.keyPoints && summary.keyPoints.length > 0 && (
+                <div className={styles.summarySection}>
+                  <h3 className={styles.summarySectionTitle}>Puntos Clave</h3>
+                  <ul className={styles.keyPointsList}>
+                    {summary.keyPoints.map((point, index) => (
+                      <li key={index} className={styles.keyPoint}>
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {summary.participants && summary.participants.length > 0 && (
+                <div className={styles.summarySection}>
+                  <h3 className={styles.summarySectionTitle}>Participantes</h3>
+                  <p className={styles.summaryText}>
+                    {summary.participants.join(", ")}
+                  </p>
+                </div>
+              )}
+
+              <div className={styles.summaryFooter}>
+                <small className={styles.summaryTimestamp}>
+                  Generado el {new Date(summary.timestamp).toLocaleString('es-ES')}
+                </small>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
