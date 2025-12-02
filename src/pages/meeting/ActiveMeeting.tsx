@@ -332,7 +332,18 @@ const ActiveMeeting: React.FC = () => {
             <p className={styles.roomId}>ID: {roomId}</p>
           )}
         </div>
-        <button onClick={handleExit} className={styles.exitButton}>
+        {/* WCAG 1.3.3: Exit button identified by text label, not by position or appearance */}
+        <button 
+          onClick={handleExit} 
+          className={styles.exitButton}
+          aria-label="Salir de la reunión"
+          aria-describedby="exit-button-description"
+          id="exit-meeting-button"
+          type="button"
+        >
+          <span id="exit-button-description" className="sr-only">
+            Botón para salir de la reunión. Se encuentra en la esquina superior derecha del encabezado.
+          </span>
           Salir
         </button>
       </header>
@@ -344,7 +355,18 @@ const ActiveMeeting: React.FC = () => {
         }`}
       >
         {/* 💡 Grid de participantes: AHORA RENDERIZA STREAMS DE WEBRTC */}
-        <div className={styles.participantsGrid}>
+        {/* WCAG 1.3.3: Participants grid identified by role and label, not by visual layout */}
+        <div 
+          className={styles.participantsGrid}
+          role="region"
+          aria-label="Participantes de la reunión"
+          aria-describedby="participants-grid-description"
+        >
+          <span id="participants-grid-description" className="sr-only">
+            Área de participantes de la reunión. Muestra los videos y avatares de todos los participantes.
+            Tu video aparece primero, seguido de los videos de los demás participantes.
+            Cada participante está identificado por su nombre.
+          </span>
           
           {/* 1. Video/Audio Local (Siempre renderizado primero) */}
           <div key="local" className={styles.participantCard}>
@@ -385,18 +407,43 @@ const ActiveMeeting: React.FC = () => {
         </div>
 
         {/* 💡 Controles: AHORA USAN LAS FUNCIONES DEL HOOK */}
-        <div className={styles.controls}>
+        {/* WCAG 1.3.3: Controls identified by name/label, not by position, shape, or size */}
+        <div 
+          className={styles.controls}
+          role="toolbar"
+          aria-label="Controles de reunión"
+          aria-describedby="controls-instructions"
+        >
+          <span id="controls-instructions" className="sr-only">
+            Barra de controles de reunión. Contiene tres botones: 
+            botón de micrófono (silenciar o activar), botón de cámara (apagar o encender), 
+            y botón de chat (mostrar u ocultar panel de chat). 
+            Usa las teclas de flecha para navegar entre los controles.
+          </span>
           {/* Botón de Silencio */}
+          {/* WCAG 1.3.3, 1.4.2: Audio control identified by name, not position or appearance */}
           <button
-            onClick={toggleMute} // 💡 Función del hook
+            onClick={toggleMute}
             className={`${styles.controlButton} ${isMuted ? styles.muted : ""}`}
             aria-label={isMuted ? "Activar micrófono" : "Silenciar micrófono"}
+            aria-pressed={isMuted}
+            aria-describedby="mute-button-description"
+            id="mute-control-button"
+            type="button"
           >
+            <span id="mute-button-description" className="sr-only">
+              {isMuted 
+                ? "El micrófono está silenciado. Presiona para activarlo"
+                : "El micrófono está activo. Presiona para silenciarlo"
+              }
+            </span>
             <svg
               className={styles.controlIcon}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
             >
               {isMuted ? (
                 <>
@@ -425,18 +472,31 @@ const ActiveMeeting: React.FC = () => {
           </button>
 
           {/* Botón de Video */}
+          {/* WCAG 1.3.3: Camera control identified by name, not position */}
           <button
-            onClick={toggleCamera} // 💡 Función del hook
+            onClick={toggleCamera}
             className={`${styles.controlButton} ${
-              isCameraOff ? styles.videoOff : "" // 💡 Estado del hook
+              isCameraOff ? styles.videoOff : ""
             }`}
             aria-label={isCameraOff ? "Activar cámara" : "Apagar cámara"}
+            aria-pressed={isCameraOff}
+            aria-describedby="camera-button-description"
+            id="camera-control-button"
+            type="button"
           >
+            <span id="camera-button-description" className="sr-only">
+              {isCameraOff 
+                ? "La cámara está apagada. Presiona para activarla"
+                : "La cámara está encendida. Presiona para apagarla"
+              }
+            </span>
             <svg
               className={styles.controlIcon}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
             >
               <path
                 strokeLinecap="round"
@@ -448,17 +508,32 @@ const ActiveMeeting: React.FC = () => {
           </button>
 
           {/* Botón de Chat (Mantenido) */}
+          {/* WCAG 1.3.3: Chat toggle button identified by name, not position */}
           <button
             onClick={() => setShowChat(!showChat)}
             className={`${styles.controlButton} ${
               showChat ? styles.active : ""
             }`}
+            aria-label={showChat ? "Ocultar chat" : "Mostrar chat"}
+            aria-pressed={showChat}
+            aria-expanded={showChat}
+            aria-describedby="chat-button-description"
+            id="chat-control-button"
+            type="button"
           >
+            <span id="chat-button-description" className="sr-only">
+              {showChat 
+                ? "El panel de chat está visible. Presiona para ocultarlo"
+                : "El panel de chat está oculto. Presiona para mostrarlo"
+              }
+            </span>
             <svg
               className={styles.controlIcon}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
             >
               <path
                 strokeLinecap="round"
@@ -490,15 +565,25 @@ const ActiveMeeting: React.FC = () => {
                 {isSocketConnected ? "● Conectado" : "● Desconectado"}
               </div>
             </div>
+            {/* WCAG 1.3.3: Close button identified by label, not by position (X icon) */}
             <button
               onClick={() => setShowChat(false)}
               className={styles.closeChatButton}
+              aria-label="Cerrar panel de chat"
+              aria-describedby="close-chat-description"
+              id="close-chat-button"
+              type="button"
             >
+              <span id="close-chat-description" className="sr-only">
+                Botón para cerrar el panel de chat. Se encuentra en la esquina superior derecha del panel.
+              </span>
               <svg
                 className={styles.closeIcon}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
+                focusable="false"
               >
                 <path
                   strokeLinecap="round"
