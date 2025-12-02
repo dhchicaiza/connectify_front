@@ -2,12 +2,76 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import useAuthStore from "../../../stores/useAuthStore";
 
+/**
+ * Type definition for a map of peer connections indexed by user ID.
+ * @typedef {Record<string, RTCPeerConnection>} PeerConnectionsMap
+ */
 type PeerConnectionsMap = Record<string, RTCPeerConnection>;
+
+/**
+ * Type definition for a map of remote media streams indexed by user ID.
+ * @typedef {Record<string, MediaStream>} StreamsMap
+ */
 type StreamsMap = Record<string, MediaStream>;
 
-// 💡 FUNCIÓN DE UTILIDAD: Retraso para mitigar la "race condition" de WebRTC inicial
+/**
+ * Utility function to create a delay, used to mitigate WebRTC initialization race conditions.
+ * 
+ * @param {number} ms - The number of milliseconds to delay.
+ * @returns {Promise<void>} A promise that resolves after the specified delay.
+ * 
+ * @private
+ */
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Custom React hook for managing WebRTC peer-to-peer connections in a meeting.
+ * 
+ * This hook handles the complete WebRTC lifecycle including:
+ * - Local media stream acquisition (audio/video)
+ * - Signaling server connection via Socket.IO
+ * - Peer connection establishment and management
+ * - Perfect Negotiation pattern implementation
+ * - ICE candidate handling
+ * - Remote stream management
+ * - Voice activity detection
+ * 
+ * @param {string | undefined} meetingId - The unique identifier for the meeting/room to join.
+ * 
+ * @returns {Object} An object containing WebRTC-related state and references:
+ * @returns {React.RefObject<HTMLVideoElement>} returns.localVideoRef - React ref for the local video element.
+ * @returns {StreamsMap} returns.remoteStreams - Map of remote media streams by user ID.
+ * @returns {Record<string, { name: string }>} returns.remoteUsers - Map of remote user information by user ID.
+ * @returns {React.MutableRefObject<MediaStream | null>} returns.localStream - Ref to the local media stream.
+ * @returns {MediaStream | null} returns.localStreamState - State of the local media stream.
+ * @returns {(stream: MediaStream | null) => void} returns.setLocalStreamState - Setter for local stream state.
+ * @returns {boolean} returns.isSpeaking - Whether the local user is currently speaking (voice activity detected).
+ * 
+ * @example
+ * ```tsx
+ * const {
+ *   localVideoRef,
+ *   remoteStreams,
+ *   remoteUsers,
+ *   localStreamState,
+ *   setLocalStreamState,
+ *   isSpeaking
+ * } = useWebRTC(meetingId);
+ * 
+ * return (
+ *   <video ref={localVideoRef} autoPlay muted />
+ * );
+ * ```
+ * 
+ * @remarks
+ * - Uses the Perfect Negotiation pattern to handle offer/answer collisions gracefully.
+ * - Implements automatic reconnection logic for failed peer connections.
+ * - Queues signals and ICE candidates that arrive before the local stream is ready.
+ * - Requires VITE_SIGNALING_SERVER_URL environment variable to be set.
+ * 
+ * @author Connectify Team
+ * @since 1.0.0
+ */
 export function useWebRTC(meetingId: string | undefined) {
   const username = useAuthStore((s) => s.user?.firstName);
 
@@ -31,7 +95,15 @@ export function useWebRTC(meetingId: string | undefined) {
   const [remoteUsers, setRemoteUsers] = useState<Record<string, { name: string }>>({});
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // 🚀 Función para agregar pistas locales a una conexión peer
+  /**
+   * Adds local media tracks (audio/video) to a peer connection.
+   * Prevents duplicate tracks by checking existing senders before adding.
+   * 
+   * @param {RTCPeerConnection} pc - The peer connection to add tracks to.
+   * @returns {boolean} True if tracks were added or already present, false if no local stream exists.
+   * 
+   * @private
+   */
   const addLocalTracksToConnection = useCallback((pc: RTCPeerConnection) => {
     if (!localStream.current) return false;
     
@@ -47,7 +119,16 @@ export function useWebRTC(meetingId: string | undefined) {
     return true;
   }, []);
 
-  // 🚀 Función para procesar ICE candidates pendientes
+  /**
+   * Processes queued ICE candidates for a peer connection.
+   * ICE candidates that arrive before the remote description is set are queued
+   * and processed once the description is available.
+   * 
+   * @param {string} userId - The user ID of the peer connection.
+   * @returns {Promise<void>} A promise that resolves when all pending candidates are processed.
+   * 
+   * @private
+   */
   const processPendingIceCandidates = useCallback(async (userId: string) => {
     const pc = peerConnections.current[userId];
     const pending = pendingIceCandidates.current[userId];
@@ -68,6 +149,23 @@ export function useWebRTC(meetingId: string | undefined) {
     pendingIceCandidates.current[userId] = [];
   }, []);
 
+  /**
+   * Creates or retrieves an existing RTCPeerConnection for a given user.
+   * Implements connection reuse logic and automatic reconnection on failure.
+   * 
+   * @param {string} userId - The unique identifier of the remote user.
+   * @param {boolean} [forceNew=false] - If true, forces creation of a new connection even if one exists.
+   * @returns {RTCPeerConnection} The peer connection instance for the specified user.
+   * 
+   * @description
+   * - Reuses existing connections if they are in a valid state (not failed or closed).
+   * - Closes and recreates connections that are in a failed or closed state.
+   * - Sets up event handlers for track reception, ICE candidates, and connection state changes.
+   * - Implements automatic ICE restart on connection failure.
+   * - Adds local tracks to the connection if the stream is ready.
+   * 
+   * @private
+   */
   const createPeerConnection = useCallback((userId: string, forceNew: boolean = false) => {
     // Si ya existe una conexión y no forzamos nueva, devolverla
     if (peerConnections.current[userId] && !forceNew) {
@@ -158,6 +256,21 @@ export function useWebRTC(meetingId: string | undefined) {
     return pc;
   }, [addLocalTracksToConnection]);
 
+  /**
+   * Creates and sends a WebRTC offer to a remote peer.
+   * Waits for the local stream to be ready before creating the offer.
+   * 
+   * @param {string} userId - The unique identifier of the remote user to send the offer to.
+   * @returns {Promise<void>} A promise that resolves when the offer is sent or fails.
+   * 
+   * @description
+   * - Waits for the local stream to be ready before proceeding.
+   * - Skips offer creation if the connection is already in a negotiation state.
+   * - Ensures local tracks are added before creating the offer.
+   * - Emits the offer SDP through the signaling socket.
+   * 
+   * @private
+   */
   const createOfferTo = useCallback(async (userId: string) => {
     // 🚀 Esperar a que el stream esté listo
     if (!isStreamReady.current || !localStream.current) {
@@ -202,7 +315,22 @@ export function useWebRTC(meetingId: string | undefined) {
     }
   }, [createPeerConnection, addLocalTracksToConnection]);
 
-  const setupVoiceDetection = (stream: MediaStream) => {
+ /**
+  * Sets up voice activity detection for the local audio stream.
+  * Uses Web Audio API to analyze audio frequency data and detect when the user is speaking.
+  * 
+  * @param {MediaStream} stream - The local media stream containing audio tracks.
+  * @returns {void}
+  * 
+  * @description
+  * - Creates an AudioContext and AnalyserNode to process audio data.
+  * - Continuously monitors audio levels using requestAnimationFrame.
+  * - Updates isSpeaking state when average frequency exceeds threshold (30).
+  * - Only runs if the stream contains audio tracks.
+  * 
+  * @private
+  */
+ const setupVoiceDetection = (stream: MediaStream) => {
     if (stream.getAudioTracks().length === 0) return;
 
     const audioContext = new AudioContext();
@@ -221,11 +349,14 @@ export function useWebRTC(meetingId: string | undefined) {
       requestAnimationFrame(loop);
     };
 
-    loop();
-  };
+    loop();
+  };
 
-  
-  useEffect(() => {
+  /**
+   * Effect hook that assigns the local stream to the video element when available.
+   * Logs warnings if video tracks are missing from the stream.
+   */
+  useEffect(() => {
     if (localStreamState && localVideoRef.current) {
         localVideoRef.current.srcObject = localStreamState;
         console.log("Asignación de srcObject asegurada.");
@@ -235,10 +366,34 @@ export function useWebRTC(meetingId: string | undefined) {
         } else {
             console.log("✅ Pista de video encontrada.");
         }
-    }
+    }
   }, [localStreamState]); 
 
-  // 🚀 Handler de señales con Perfect Negotiation Pattern
+  /**
+   * Handles incoming WebRTC signaling messages (offers, answers, ICE candidates).
+   * Implements the Perfect Negotiation pattern to handle offer/answer collisions gracefully.
+   * 
+   * @param {string} from - The user ID of the peer sending the signal.
+   * @param {any} data - The signaling data containing SDP or ICE candidate information.
+   * @returns {Promise<void>} A promise that resolves when the signal is processed.
+   * 
+   * @description
+   * **Perfect Negotiation Pattern:**
+   * - Determines "polite" vs "impolite" peer based on socket ID comparison.
+   * - Polite peer (lower socket ID) yields to collisions by rolling back local description.
+   * - Impolite peer ignores incoming offers during collisions.
+   * 
+   * **Signal Types:**
+   * - **Offer (SDP)**: Creates answer and sends it back to the offerer.
+   * - **Answer (SDP)**: Sets remote description if expecting an answer.
+   * - **ICE Candidate**: Adds candidate to connection or queues if description not ready.
+   * 
+   * **Queue Management:**
+   * - Queues offers that arrive before local stream is ready.
+   * - Queues ICE candidates that arrive before remote description is set.
+   * 
+   * @private
+   */
   const handleSignal = useCallback(async (from: string, data: any) => {
     // Si el stream no está listo y es una oferta, encolar
     if (!isStreamReady.current && data.sdp?.type === 'offer') {
@@ -334,6 +489,31 @@ export function useWebRTC(meetingId: string | undefined) {
     }
   }, [createPeerConnection, addLocalTracksToConnection, processPendingIceCandidates]);
 
+  /**
+   * Main effect hook that initializes WebRTC connections when meetingId changes.
+   * 
+   * **Initialization Flow:**
+   * 1. Requests local media stream (video + audio, fallback to audio only).
+   * 2. Sets up voice activity detection.
+   * 3. Connects to signaling server via Socket.IO.
+   * 4. Handles signaling events (usersInRoom, newUserConnected, signal, userDisconnected).
+   * 5. Processes any queued signals that arrived before stream was ready.
+   * 
+   * **Cleanup:**
+   * - Disconnects signaling socket.
+   * - Stops all local media tracks.
+   * - Closes all peer connections.
+   * - Resets all state flags and queues.
+   * 
+   * @param {string | undefined} meetingId - The meeting ID to join. Effect runs when this changes.
+   * @param {string | undefined} username - The current user's name for signaling.
+   * @param {Function} createOfferTo - Function to create offers to new users.
+   * @param {Function} handleSignal - Function to handle incoming signals.
+   * 
+   * @requires VITE_SIGNALING_SERVER_URL - Environment variable must be set to signaling server URL.
+   * 
+   * @dependencies meetingId, username, createOfferTo, handleSignal
+   */
   useEffect(() => {
     if (!meetingId) return;
     let cancelled = false;
