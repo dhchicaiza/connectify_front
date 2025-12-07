@@ -1,5 +1,8 @@
 import { useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { initWebRTC } from "../../webrtc/webrtc";
+import useAuthStore from "../../stores/useAuthStore";
+
 /**
  * Simple voice control UI that toggles microphone state
  * and initiates the WebRTC flow the first time the user speaks.
@@ -7,6 +10,11 @@ import { initWebRTC } from "../../webrtc/webrtc";
 export default function Voice() {
   const [isSpeaking, setIsSpeaking] = useState(false); // State to track if the user is speaking
   const [callPeers, setCallPeers] = useState(true); // State to track if peers should be called
+  const [searchParams] = useSearchParams();
+  const { user } = useAuthStore();
+
+  const roomId = searchParams.get("roomId") || "default_room";
+  const userName = user?.displayName || user?.firstName || "Usuario";
 
   // Function to start speaking
   const speak = useCallback(() => {
@@ -14,9 +22,9 @@ export default function Voice() {
 
     if (callPeers) {
       setCallPeers(false);
-      initWebRTC();
+      initWebRTC(roomId, userName);
     }
-  }, [callPeers]);
+  }, [callPeers, roomId, userName]);
 
   // Function to stop speaking
   const stop = useCallback(() => {
