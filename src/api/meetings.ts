@@ -179,3 +179,68 @@ export async function leaveMeeting(meetingId: string): Promise<void> {
   }
 }
 
+/**
+ * Interface for meeting summary response.
+ */
+export interface MeetingSummary {
+  summary: string;
+  keyPoints: string[];
+  participants: string[];
+  timestamp: string;
+}
+
+/**
+ * Interface for chat message.
+ */
+export interface ChatMessage {
+  user: string;
+  text: string;
+  room: string;
+  time: string;
+}
+
+/**
+ * Generates an AI summary for a meeting based on chat messages.
+ *
+ * @async
+ * @function generateMeetingSummary
+ * @param {string} meetingId - The meeting ID to generate summary for.
+ * @param {ChatMessage[]} messages - Array of chat messages from the meeting.
+ * @returns {Promise<MeetingSummary>} The generated summary with key points.
+ * @throws {Error} Throws an error if the request fails or messages are empty.
+ *
+ * @example
+ * const summary = await generateMeetingSummary("meeting-uuid", chatMessages);
+ * console.log(summary.keyPoints); // Array of key discussion points
+ */
+export async function generateMeetingSummary(meetingId: string, messages: ChatMessage[]): Promise<MeetingSummary> {
+  try {
+    const token = getToken();
+
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
+
+    if (!messages || messages.length === 0) {
+      throw new Error('At least one message is required to generate a summary');
+    }
+
+    const response = await fetch(`${API}/meetings/${meetingId}/summary`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ messages }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      await handleApiError({ response, data: result, location: "generateMeetingSummary" });
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error("[generateMeetingSummary] Unexpected error:", error);
+    throw error;
+  }
+}
+

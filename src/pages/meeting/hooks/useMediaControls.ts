@@ -35,96 +35,96 @@ import { useState, useEffect } from "react";
  */
 export function useMediaControls(
      localStream: MediaStream | null,
-     setlocalStream: (s: MediaStream | null) => void 
-) { 
-    const [isMuted, setIsMuted] = useState(false); 
-    const [isCameraOff, setIsCameraOff] = useState(false); 
-    const [hasMic, setHasMic] = useState(false);
-    const [hasCamera, setHasCamera] = useState(false);
+     _setlocalStream: (s: MediaStream | null) => void
+) {
+     const [isMuted, setIsMuted] = useState(false);
+     const [isCameraOff, setIsCameraOff] = useState(false);
+     const [hasMic, setHasMic] = useState(false);
+     const [hasCamera, setHasCamera] = useState(false);
 
-    /**
-     * Effect hook that synchronizes the UI state with the actual track states in the MediaStream.
-     * Updates hasMic, hasCamera, isMuted, and isCameraOff based on the tracks present in the stream
-     * and their enabled/disabled status.
-     */
+     /**
+      * Effect hook that synchronizes the UI state with the actual track states in the MediaStream.
+      * Updates hasMic, hasCamera, isMuted, and isCameraOff based on the tracks present in the stream
+      * and their enabled/disabled status.
+      */
      useEffect(() => {
-         if (!localStream) {
-            setHasMic(false);
-            setHasCamera(false);
-            setIsCameraOff(true);
-            return;
-        }
-        const audioTracks = localStream.getAudioTracks();
-        const videoTracks = localStream.getVideoTracks();
+          if (!localStream) {
+               setHasMic(false);
+               setHasCamera(false);
+               setIsCameraOff(true);
+               return;
+          }
+          const audioTracks = localStream.getAudioTracks();
+          const videoTracks = localStream.getVideoTracks();
 
-        setHasMic(audioTracks.length > 0);
-        setHasCamera(videoTracks.length > 0);
+          setHasMic(audioTracks.length > 0);
+          setHasCamera(videoTracks.length > 0);
 
-        if (videoTracks.length > 0) {
-            setIsCameraOff(!videoTracks[0].enabled); 
-        } else {
-        setIsCameraOff(true);
-    }
-    if (audioTracks.length > 0) {
-         setIsMuted(!audioTracks[0].enabled); 
-         }
-         }, [localStream]);
+          if (videoTracks.length > 0) {
+               setIsCameraOff(!videoTracks[0].enabled);
+          } else {
+               setIsCameraOff(true);
+          }
+          if (audioTracks.length > 0) {
+               setIsMuted(!audioTracks[0].enabled);
+          }
+     }, [localStream]);
 
-    /**
-     * Toggles the microphone mute/unmute state.
-     * Enables or disables all audio tracks in the local stream and updates the isMuted state.
-     * 
-     * @function toggleMute
-     * @returns {void}
-     * 
-     * @description
-     * If no local stream is available or there are no audio tracks, the function returns early
-     * and sets hasMic to false. Otherwise, it toggles the enabled state of all audio tracks
-     * and updates the isMuted state accordingly.
-     */
-    const toggleMute = () => {
-         if (!localStream) return;
-    const audioTracks = localStream.getAudioTracks();
-    if (audioTracks.length === 0) {
-         setHasMic(false);
-          return;
-         }
-    const newMuted = !isMuted;
-    audioTracks.forEach((t) => { t.enabled = !t.enabled; });
-     setIsMuted(newMuted);
-  };
+     /**
+      * Toggles the microphone mute/unmute state.
+      * Enables or disables all audio tracks in the local stream and updates the isMuted state.
+      * 
+      * @function toggleMute
+      * @returns {void}
+      * 
+      * @description
+      * If no local stream is available or there are no audio tracks, the function returns early
+      * and sets hasMic to false. Otherwise, it toggles the enabled state of all audio tracks
+      * and updates the isMuted state accordingly.
+      */
+     const toggleMute = () => {
+          if (!localStream) return;
+          const audioTracks = localStream.getAudioTracks();
+          if (audioTracks.length === 0) {
+               setHasMic(false);
+               return;
+          }
+          const newMuted = !isMuted;
+          audioTracks.forEach((t) => { t.enabled = !t.enabled; });
+          setIsMuted(newMuted);
+     };
 
-    /**
-     * Toggles the camera on/off state.
-     * Enables or disables all video tracks in the local stream and updates the isCameraOff state.
-     * 
-     * @function toggleCamera
-     * @returns {void}
-     * 
-     * @description
-     * If no local stream is available or there are no video tracks, the function returns early
-     * and sets hasCamera to false. Otherwise, it toggles the enabled state of all video tracks
-     * and updates the isCameraOff state accordingly.
-     */
-    const toggleCamera = () => {
-    if (!localStream) return;
-    const videoTracks = localStream.getVideoTracks();
-    if (videoTracks.length === 0) {
-         setHasCamera(false);
-         return;
-         }
+     /**
+      * Toggles the camera on/off state.
+      * Enables or disables all video tracks in the local stream and updates the isCameraOff state.
+      * 
+      * @function toggleCamera
+      * @returns {void}
+      * 
+      * @description
+      * If no local stream is available or there are no video tracks, the function returns early
+      * and sets hasCamera to false. Otherwise, it toggles the enabled state of all video tracks
+      * and updates the isCameraOff state accordingly.
+      */
+     const toggleCamera = () => {
+          if (!localStream) return;
+          const videoTracks = localStream.getVideoTracks();
+          if (videoTracks.length === 0) {
+               setHasCamera(false);
+               return;
+          }
 
-    const newCameraOff = !isCameraOff;
-    videoTracks.forEach((t) => { t.enabled = !t.enabled; });
-     setIsCameraOff(newCameraOff);
-    };
+          const newCameraOff = !isCameraOff;
+          videoTracks.forEach((t) => { t.enabled = !t.enabled; });
+          setIsCameraOff(newCameraOff);
+     };
 
-    return {
-    isMuted,
-    isCameraOff,
-    hasMic,
-    hasCamera,
-    toggleMute,
-    toggleCamera,
- };
+     return {
+          isMuted,
+          isCameraOff,
+          hasMic,
+          hasCamera,
+          toggleMute,
+          toggleCamera,
+     };
 }

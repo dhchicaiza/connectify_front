@@ -1,6 +1,5 @@
 import Peer from "simple-peer/simplepeer.min.js";
-// Línea a comentar: Ya no importamos la librería Socket.IO
-// import io from "socket.io-client";
+import io from "socket.io-client";
 
 // URLs and credentials for WebRTC and ICE servers
 const serverWebRTCUrl = import.meta.env.VITE_WEBRTC_URL;
@@ -16,13 +15,14 @@ let localMediaStream = null;
  * Initializes the WebRTC connection if supported.
  * @async
  * @function init
+ * @param {string} roomId - The room ID to join
+ * @param {string} userName - The user's display name
  */
-export const initWebRTC = async () => {
+export const initWebRTC = async (roomId, userName) => {
   if (Peer.WEBRTC_SUPPORT) {
     try {
       localMediaStream = await getMedia();
-      // Línea a comentar: Ya no intentamos iniciar la conexión de Socket.IO
-      // initSocketConnection(); 
+      initSocketConnection(roomId, userName);
     } catch (error) {
       console.error("Failed to initialize WebRTC connection:", error);
     }
@@ -32,14 +32,21 @@ export const initWebRTC = async () => {
 };
 
 /**
- * Gets the user's media stream (audio only).
+ * Gets the user's media stream (audio and video).
  * @async
  * @function getMedia
  * @returns {Promise<MediaStream>} The user's media stream.
  */
 async function getMedia() {
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: true });
+    return await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: "user"
+      }
+    });
   } catch (err) {
     console.error("Failed to get user media:", err);
     throw err;
@@ -49,67 +56,72 @@ async function getMedia() {
 /**
  * Initializes the socket connection and sets up event listeners.
  * @function initSocketConnection
+ * @param {string} roomId - The room ID to join
+ * @param {string} userName - The user's display name
  */
-function initSocketConnection() {
-  // Cuerpo de la función a comentar: Desactivamos la inicialización y los listeners
-  /*
-  socket = io(serverWebRTCUrl);
+function initSocketConnection(roomId, userName) {
+  socket = io(serverWebRTCUrl, {
+    query: { room: roomId, name: userName }
+  });
 
-  socket.on("introduction", handleIntroduction);
+  socket.on("usersInRoom", handleIntroduction);
   socket.on("newUserConnected", handleNewUserConnected);
   socket.on("userDisconnected", handleUserDisconnected);
   socket.on("signal", handleSignal);
-  */
 }
 
 /**
- * Handles the introduction event.
- * @param {Array<string>} otherClientIds - Array of other client IDs.
+ * Handles the introduction event (existing users in room).
+ * @param {Array<{id: string, name: string}>} existingUsers - Array of existing users in room.
  */
-function handleIntroduction(otherClientIds) {
-  otherClientIds.forEach((theirId) => {
-    if (theirId !== socket.id) {
-      peers[theirId] = { peerConnection: createPeerConnection(theirId, true) };
-      createClientMediaElements(theirId);
+function handleIntroduction(existingUsers) {
+  console.log("🎬 Users already in room:", existingUsers);
+  existingUsers.forEach((user) => {
+    if (user.id !== socket.id) {
+      console.log(`📞 Initiating call to ${user.name} (${user.id})`);
+      peers[user.id] = { peerConnection: createPeerConnection(user.id, true) };
+      createClientMediaElements(user.id);
     }
   });
 }
 
 /**
  * Handles the new user connected event.
- * @param {string} theirId - The ID of the newly connected user.
+ * @param {{id: string, name: string}} userData - The newly connected user data.
  */
-function handleNewUserConnected(theirId) {
-  if (theirId !== socket.id && !(theirId in peers)) {
-    peers[theirId] = {};
-    createClientMediaElements(theirId);
+function handleNewUserConnected(userData) {
+  console.log(`👋 New user connected: ${userData.name} (${userData.id})`);
+  if (userData.id !== socket.id && !(userData.id in peers)) {
+    peers[userData.id] = {};
+    createClientMediaElements(userData.id);
   }
 }
 
 /**
  * Handles the user disconnected event.
- * @param {string} _id - The ID of the disconnected user.
+ * @param {{userId: string}} data - The disconnected user data.
  */
-function handleUserDisconnected(_id) {
-  if (_id !== socket.id) {
-    removeClientAudioElement(_id);
-    delete peers[_id];
+function handleUserDisconnected(data) {
+  console.log(`👋 User disconnected: ${data.userId}`);
+  if (data.userId !== socket.id) {
+    removeClientVideoElement(data.userId);
+    delete peers[data.userId];
   }
 }
 
 /**
  * Handles the signal event.
- * @param {string} to - The ID of the receiving user.
- * @param {string} from - The ID of the sending user.
- * @param {any} data - The signal data.
+ * @param {{from: string, data: any}} signalData - The signal data from peer.
  */
-function handleSignal(to, from, data) {
-  if (to !== socket.id) return;
+function handleSignal(signalData) {
+  const { from, data } = signalData;
+  console.log(`📡 Signal received from ${from}`);
 
   let peer = peers[from];
   if (peer && peer.peerConnection) {
     peer.peerConnection.signal(data);
   } else {
+    console.log(`📞 Creating peer connection for ${from}`);
     let peerConnection = createPeerConnection(from, false);
     peers[from] = { peerConnection };
     peerConnection.signal(data);
@@ -170,12 +182,10 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
     },
   });
 
-  // Línea a comentar: Ya no podemos emitir la señal porque 'socket' es null
-  // peerConnection.on("signal", (data) =>
-  //   socket.emit("signal", theirSocketId, socket.id, data)
-  // );
-  
-  // Las siguientes dos líneas están bien, ya que no usan 'socket'
+  peerConnection.on("signal", (data) =>
+    socket.emit("signal", { to: theirSocketId, data })
+  );
+
   peerConnection.on("connect", () =>
     peerConnection.addStream(localMediaStream)
   );
@@ -187,46 +197,84 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
 }
 
 /**
- * Disables the outgoing media stream.
+ * Disables the outgoing audio stream (mute microphone).
  * @function disableOutgoingStream
  */
 export function disableOutgoingStream() {
-  // Se requiere 'localMediaStream' para esto, pero 'localMediaStream'
-  // nunca se inicializará completamente si initWebRTC falla, lo cual
-  // es probable ahora. Añadimos una guardia para evitar errores de null.
   if (localMediaStream) {
-    localMediaStream.getTracks().forEach((track) => {
+    localMediaStream.getAudioTracks().forEach((track) => {
       track.enabled = false;
     });
+    console.log("🔇 Audio disabled");
   }
 }
 
 /**
- * Enables the outgoing media stream.
+ * Enables the outgoing audio stream (unmute microphone).
  * @function enableOutgoingStream
  */
 export function enableOutgoingStream() {
   if (localMediaStream) {
-    localMediaStream.getTracks().forEach((track) => {
+    localMediaStream.getAudioTracks().forEach((track) => {
       track.enabled = true;
     });
+    console.log("🎤 Audio enabled");
   }
 }
 
 /**
- * Creates media elements for a client.
+ * Disables the outgoing video stream (turn off camera).
+ * @function disableOutgoingVideo
+ */
+export function disableOutgoingVideo() {
+  if (localMediaStream) {
+    localMediaStream.getVideoTracks().forEach((track) => {
+      track.enabled = false;
+    });
+    console.log("📹 Video disabled");
+  }
+}
+
+/**
+ * Enables the outgoing video stream (turn on camera).
+ * @function enableOutgoingVideo
+ */
+export function enableOutgoingVideo() {
+  if (localMediaStream) {
+    localMediaStream.getVideoTracks().forEach((track) => {
+      track.enabled = true;
+    });
+    console.log("📹 Video enabled");
+  }
+}
+
+/**
+ * Gets the local media stream.
+ * @function getLocalStream
+ * @returns {MediaStream | null} The local media stream
+ */
+export function getLocalStream() {
+  return localMediaStream;
+}
+
+/**
+ * Creates media elements for a client (video with audio).
  * @function createClientMediaElements
  * @param {string} _id - The ID of the client.
  */
 function createClientMediaElements(_id) {
-  const audioEl = document.createElement("audio");
-  audioEl.id = `${_id}_audio`;
-  audioEl.controls = false;
-  audioEl.volume = 1;
-  document.body.appendChild(audioEl);
+  // Create video element that will contain both video and audio
+  const videoEl = document.createElement("video");
+  videoEl.id = `${_id}_video`;
+  videoEl.autoplay = true;
+  videoEl.playsInline = true;
+  videoEl.muted = false; // Not muted so we can hear the remote audio
+  videoEl.style.display = "none"; // Hidden by default, will be shown by React component
+  document.body.appendChild(videoEl);
 
-  audioEl.addEventListener("loadeddata", () => {
-    audioEl.play();
+  videoEl.addEventListener("loadeddata", () => {
+    console.log(`📹 Video loaded for peer ${_id}`);
+    videoEl.play().catch(err => console.error("Error playing video:", err));
   });
 }
 
@@ -237,20 +285,26 @@ function createClientMediaElements(_id) {
  * @param {MediaStream} stream - The new media stream.
  */
 function updateClientMediaElements(_id, stream) {
-  const audioEl = document.getElementById(`${_id}_audio`);
-  if (audioEl) {
-    audioEl.srcObject = new MediaStream([stream.getAudioTracks()[0]]);
+  const videoEl = document.getElementById(`${_id}_video`);
+  if (videoEl) {
+    videoEl.srcObject = stream;
+    console.log(`📹 Updated video stream for peer ${_id}`, {
+      videoTracks: stream.getVideoTracks().length,
+      audioTracks: stream.getAudioTracks().length
+    });
   }
 }
 
 /**
  * Removes media elements for a client.
- * @function removeClientAudioElement
+ * @function removeClientVideoElement
  * @param {string} _id - The ID of the client.
  */
-function removeClientAudioElement(_id) {
-  const audioEl = document.getElementById(`${_id}_audio`);
-  if (audioEl) {
-    audioEl.remove();
+function removeClientVideoElement(_id) {
+  const videoEl = document.getElementById(`${_id}_video`);
+  if (videoEl) {
+    videoEl.srcObject = null;
+    videoEl.remove();
+    console.log(`🗑️ Removed video element for peer ${_id}`);
   }
 }

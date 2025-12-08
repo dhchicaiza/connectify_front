@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Meeting.module.scss";
 import { connectToChat, disconnectSocket, getSocket } from "../../sockets/socketManager";
 import useAuthStore from "../../stores/useAuthStore";
-import { leaveMeeting, joinMeeting } from "../../api/meetings"; // Se elimina getMeetingById
-import { fetchUserProfile } from "../../api/user";
-
-// 💡 NUEVAS IMPORTACIONES DE LOS HOOKS DE A/V
-import { useWebRTC } from "./hooks/useWebRTC";
-import { useMediaControls } from "./hooks/useMediaControls";
+import { leaveMeeting, joinMeeting, generateMeetingSummary } from "../../api/meetings";
+import type { MeetingSummary } from "../../api/meetings";
+import { initWebRTC } from "../../webrtc/webrtc";
+import { useWebRTC } from "../../webrtc/useWebRTC";
+import { useMediaControls } from "../../webrtc/useMediaControls";
 
 /**
  * Interface for chat messages.
@@ -38,35 +37,35 @@ interface RemoteParticipantProps {
 // Se declara *dentro* de ActiveMeeting para mantener el scope o se mueve a un archivo separado.
 // Para este ejemplo, lo dejaremos como una función dentro del archivo, que es una práctica común en TSX.
 const RemoteParticipantVideo: React.FC<RemoteParticipantProps & { styles: any }> = ({ stream, name, initials, styles }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-    useEffect(() => {
-        if (videoRef.current && stream) {
-            videoRef.current.srcObject = stream;
-        }
-    }, [stream]);
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
-    // Chequea si el stream tiene una pista de video y si está habilitada
-    const isVideoTrackEnabled = stream?.getVideoTracks().some(t => t.enabled);
+  // Chequea si el stream tiene una pista de video y si está habilitada
+  const isVideoTrackEnabled = stream?.getVideoTracks().some(t => t.enabled);
 
-    return (
-        <div className={styles.participantCard}>
-            <video
-                ref={videoRef}
-                autoPlay
-                className={styles.videoElement}
-                style={{ display: isVideoTrackEnabled ? 'block' : 'none' }}
-            />
-            {!isVideoTrackEnabled && (
-                <div className={styles.participantInitials}>
-                    {initials}
-                </div>
-            )}
-            <div className={styles.nameOverlay}>
-                {name} 
-            </div>
+  return (
+    <div className={styles.participantCard}>
+      <video
+        ref={videoRef}
+        autoPlay
+        className={styles.videoElement}
+        style={{ display: isVideoTrackEnabled ? 'block' : 'none' }}
+      />
+      {!isVideoTrackEnabled && (
+        <div className={styles.participantInitials}>
+          {initials}
         </div>
-    );
+      )}
+      <div className={styles.nameOverlay}>
+        {name}
+      </div>
+    </div>
+  );
 };
 
 
@@ -79,19 +78,24 @@ const ActiveMeeting: React.FC = () => {
   const [searchParams] = useSearchParams();
   const roomId = searchParams.get("roomId") || "";
   const { user } = useAuthStore();
-  
+
   const [showChat, setShowChat] = useState(true);
-  
+
   // ⚠️ ESTADOS DE A/V REMOVIDOS (Ahora vienen del hook)
   // const [isMuted, setIsMuted] = useState(true); 
   // const [isVideoOff, setIsVideoOff] = useState(false);
-  
+
   const [message, setMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   // ⚠️ ELIMINADO: const [participants, setParticipants] = useState<ParticipantDisplay[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const [isWebRTCInitialized, setIsWebRTCInitialized] = useState(false);
+  const [summary, setSummary] = useState<MeetingSummary | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
 
   const userName = user?.displayName || user?.firstName || "Usuario";
 
@@ -107,35 +111,20 @@ const ActiveMeeting: React.FC = () => {
     isSpeaking, // Detección de voz 
   } = useWebRTC(roomId);
 
-  const { 
-    isMuted, 
-    isCameraOff, 
-    toggleMute, 
-    toggleCamera 
+  const {
+    isMuted,
+    isCameraOff,
+    toggleMute,
+    toggleCamera
   } = useMediaControls(
-    localStreamState, 
-    setLocalStreamState 
+    localStreamState,
+    setLocalStreamState
   );
   // ------------------------------------------
 
 
   // Fetch current user ID from profile (Mantenido)
-  useEffect(() => { /* ... lógica de fetchUserProfile ... */ 
-    const getCurrentUserId = async () => {
-        try {
-            const profile = await fetchUserProfile();
-            if (profile?.data?.id) {
-                setCurrentUserId(profile.data.id);
-            }
-        } catch (error) {
-            console.error("Error fetching user profile:", error);
-        }
-    };
-    
-    if (user) {
-        getCurrentUserId();
-    }
-  }, [user]);
+
 
   /**
    * Generates initials from a name string. (Mantenido)
@@ -144,7 +133,7 @@ const ActiveMeeting: React.FC = () => {
     if (!name || name.trim().length === 0) {
       return "??";
     }
-    
+
     const words = name.trim().split(/\s+/);
     if (words.length >= 2) {
       return (words[0][0] + words[words.length - 1][0]).toUpperCase();
@@ -176,6 +165,19 @@ const ActiveMeeting: React.FC = () => {
     };
 
     joinMeetingOnMount();
+
+    // Initialize WebRTC for audio and video
+    if (!isWebRTCInitialized && userName && roomId) {
+      console.log("🎙️ Initializing WebRTC audio and video...");
+      initWebRTC(roomId, userName)
+        .then(() => {
+          console.log("✅ WebRTC initialized successfully");
+          setIsWebRTCInitialized(true);
+        })
+        .catch((error: any) => {
+          console.error("❌ Failed to initialize WebRTC:", error);
+        });
+    }
 
     // ⚠️ ELIMINADO: Lógica de Polling por API
     // clearInterval(participantsInterval);
@@ -217,11 +219,11 @@ const ActiveMeeting: React.FC = () => {
 
       // ⚠️ ELIMINADO: Los eventos de chat "userJoined"/"userLeft" ya no disparan fetchParticipants
       socket.on("userJoined", () => {
-         console.log("User joined via chat, participants handled by WebRTC.");
+        console.log("User joined via chat, participants handled by WebRTC.");
       });
 
       socket.on("userLeft", () => {
-         console.log("User left via chat, participants handled by WebRTC.");
+        console.log("User left via chat, participants handled by WebRTC.");
       });
     }
 
@@ -230,7 +232,7 @@ const ActiveMeeting: React.FC = () => {
     return () => {
       // ⚠️ ELIMINADO: Limpieza del intervalo de polling
       // clearInterval(participantsInterval); 
-      
+
       socket.off("receiveMessage");
       socket.off("userJoined");
       socket.off("userLeft");
@@ -240,13 +242,15 @@ const ActiveMeeting: React.FC = () => {
       }
       disconnectSocket();
     };
-  // ⚠️ fetchParticipants eliminado de las dependencias
-  }, [roomId, navigate, user]); 
+  }, [roomId, navigate, user, isWebRTCInitialized, userName]);
 
   // ... Auto-scroll, handleExit, y handleSendMessage se mantienen iguales ...
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  // Connect local stream to video element
+
 
   const handleExit = async () => { /* ... lógica de handleExit ... */
     if (roomId) {
@@ -298,6 +302,31 @@ const ActiveMeeting: React.FC = () => {
     sendMessageToSocket(socket, trimmedMessage);
   };
 
+  /**
+   * Generates AI summary for the meeting.
+   */
+  const handleGenerateSummary = async () => {
+    if (!roomId || chatMessages.length === 0) {
+      alert("No hay mensajes para generar un resumen.");
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+
+    try {
+      console.log("🤖 Generating AI summary...");
+      const generatedSummary = await generateMeetingSummary(roomId, chatMessages);
+      setSummary(generatedSummary);
+      setShowSummary(true);
+      console.log("✅ Summary generated successfully:", generatedSummary);
+    } catch (error) {
+      console.error("❌ Error generating summary:", error);
+      alert("Error al generar el resumen. Por favor, intenta de nuevo.");
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
   const sendMessageToSocket = (socket: any, text: string) => { /* ... lógica de sendMessageToSocket ... */
     const timestamp = new Date().toISOString();
     const newMessage: ChatMessage = {
@@ -314,7 +343,7 @@ const ActiveMeeting: React.FC = () => {
       socket.emit("sendMessage", newMessage);
     } catch (error) {
       console.error("Error emitting message:", error);
-      setChatMessages((prev) => 
+      setChatMessages((prev) =>
         prev.filter((m) => !(m.time === timestamp && m.user === userName && m.text === text))
       );
       alert("Error al enviar el mensaje. Por favor, intenta de nuevo.");
@@ -332,75 +361,62 @@ const ActiveMeeting: React.FC = () => {
             <p className={styles.roomId}>ID: {roomId}</p>
           )}
         </div>
-        {/* WCAG 1.3.3: Exit button identified by text label, not by position or appearance */}
-        <button 
-          onClick={handleExit} 
-          className={styles.exitButton}
-          aria-label="Salir de la reunión"
-          aria-describedby="exit-button-description"
-          id="exit-meeting-button"
-          type="button"
-        >
-          <span id="exit-button-description" className="sr-only">
-            Botón para salir de la reunión. Se encuentra en la esquina superior derecha del encabezado.
-          </span>
-          Salir
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button
+            onClick={handleGenerateSummary}
+            className={styles.summaryButton}
+            disabled={isGeneratingSummary || chatMessages.length === 0}
+            title={chatMessages.length === 0 ? "No hay mensajes para resumir" : "Generar resumen con IA"}
+          >
+            {isGeneratingSummary ? "Generando..." : "📝 Resumen IA"}
+          </button>
+          <button onClick={handleExit} className={styles.exitButton}>
+            Salir
+          </button>
+        </div>
       </header>
 
       {/* Contenido principal */}
       <div
-        className={`${styles.meetingContent} ${
-          showChat ? styles.withChat : ""
-        }`}
+        className={`${styles.meetingContent} ${showChat ? styles.withChat : ""
+          }`}
       >
-        {/* 💡 Grid de participantes: AHORA RENDERIZA STREAMS DE WEBRTC */}
-        {/* WCAG 1.3.3: Participants grid identified by role and label, not by visual layout */}
-        <div 
-          className={styles.participantsGrid}
-          role="region"
-          aria-label="Participantes de la reunión"
-          aria-describedby="participants-grid-description"
-        >
-          <span id="participants-grid-description" className="sr-only">
-            Área de participantes de la reunión. Muestra los videos y avatares de todos los participantes.
-            Tu video aparece primero, seguido de los videos de los demás participantes.
-            Cada participante está identificado por su nombre.
-          </span>
-          
-          {/* 1. Video/Audio Local (Siempre renderizado primero) */}
-          <div key="local" className={styles.participantCard}>
+        {/* Grid de participantes */}
+        <div className={styles.participantsGrid}>
+          {/* Local user video */}
+          <div className={`${styles.participantCard} ${isSpeaking ? styles.speaking : ''}`}>
             <video
-              ref={localVideoRef} // 💡 Usa la ref del hook
+              ref={localVideoRef}
               autoPlay
+              playsInline
               muted
               className={styles.videoElement}
-              // Oculta/Muestra basado en el estado del hook
-              style={{ display: isCameraOff ? 'none' : 'block' }} 
+              style={{
+                display: isCameraOff ? 'none' : 'block',
+                transform: 'scaleX(-1)' // Mirror local video
+              }}
             />
-            {/* Si la cámara está apagada o no hay video, muestra el avatar */}
-            {(isCameraOff || !localStreamState?.getVideoTracks().length) && (
-              <div className={styles.participantInitials} data-speaking={isSpeaking ? "true" : "false"}>
+            {isCameraOff && (
+              <div className={styles.participantInitials}>
                 {generateInitials(userName)}
               </div>
             )}
-            <div className={styles.nameOverlay}>
-              {userName} (Tú) {isMuted && "🔇"}
-            </div>
+            <div className={styles.nameOverlay}>{userName} (Tú)</div>
           </div>
 
-          {/* 2. Videos/Audios Remotos */}
+          {/* Remote participants */}
           {Object.entries(remoteStreams).map(([userId, stream]) => {
-            const participantName = remoteUsers[userId]?.name || `Usuario Remoto`;
-            
+            const remoteUser = remoteUsers[userId];
+            // if (!remoteUser) return null; // Optional: filter if user data missing
+
             return (
-              <RemoteParticipantVideo 
+              <RemoteParticipantVideo
                 key={userId}
                 userId={userId}
                 stream={stream}
-                name={participantName}
-                initials={generateInitials(participantName)}
-                styles={styles} // Pasamos los estilos
+                name={remoteUser?.name || "Usuario Remoto"}
+                initials={generateInitials(remoteUser?.name || "UR")}
+                styles={styles}
               />
             );
           })}
@@ -408,16 +424,16 @@ const ActiveMeeting: React.FC = () => {
 
         {/* 💡 Controles: AHORA USAN LAS FUNCIONES DEL HOOK */}
         {/* WCAG 1.3.3: Controls identified by name/label, not by position, shape, or size */}
-        <div 
+        <div
           className={styles.controls}
           role="toolbar"
           aria-label="Controles de reunión"
           aria-describedby="controls-instructions"
         >
           <span id="controls-instructions" className="sr-only">
-            Barra de controles de reunión. Contiene tres botones: 
-            botón de micrófono (silenciar o activar), botón de cámara (apagar o encender), 
-            y botón de chat (mostrar u ocultar panel de chat). 
+            Barra de controles de reunión. Contiene tres botones:
+            botón de micrófono (silenciar o activar), botón de cámara (apagar o encender),
+            y botón de chat (mostrar u ocultar panel de chat).
             Usa las teclas de flecha para navegar entre los controles.
           </span>
           {/* Botón de Silencio */}
@@ -432,7 +448,7 @@ const ActiveMeeting: React.FC = () => {
             type="button"
           >
             <span id="mute-button-description" className="sr-only">
-              {isMuted 
+              {isMuted
                 ? "El micrófono está silenciado. Presiona para activarlo"
                 : "El micrófono está activo. Presiona para silenciarlo"
               }
@@ -475,9 +491,8 @@ const ActiveMeeting: React.FC = () => {
           {/* WCAG 1.3.3: Camera control identified by name, not position */}
           <button
             onClick={toggleCamera}
-            className={`${styles.controlButton} ${
-              isCameraOff ? styles.videoOff : ""
-            }`}
+            className={`${styles.controlButton} ${isCameraOff ? styles.videoOff : ""
+              }`}
             aria-label={isCameraOff ? "Activar cámara" : "Apagar cámara"}
             aria-pressed={isCameraOff}
             aria-describedby="camera-button-description"
@@ -485,7 +500,7 @@ const ActiveMeeting: React.FC = () => {
             type="button"
           >
             <span id="camera-button-description" className="sr-only">
-              {isCameraOff 
+              {isCameraOff
                 ? "La cámara está apagada. Presiona para activarla"
                 : "La cámara está encendida. Presiona para apagarla"
               }
@@ -511,9 +526,8 @@ const ActiveMeeting: React.FC = () => {
           {/* WCAG 1.3.3: Chat toggle button identified by name, not position */}
           <button
             onClick={() => setShowChat(!showChat)}
-            className={`${styles.controlButton} ${
-              showChat ? styles.active : ""
-            }`}
+            className={`${styles.controlButton} ${showChat ? styles.active : ""
+              }`}
             aria-label={showChat ? "Ocultar chat" : "Mostrar chat"}
             aria-pressed={showChat}
             aria-expanded={showChat}
@@ -522,7 +536,7 @@ const ActiveMeeting: React.FC = () => {
             type="button"
           >
             <span id="chat-button-description" className="sr-only">
-              {showChat 
+              {showChat
                 ? "El panel de chat está visible. Presiona para ocultarlo"
                 : "El panel de chat está oculto. Presiona para mostrarlo"
               }
@@ -548,7 +562,7 @@ const ActiveMeeting: React.FC = () => {
 
       {/* Overlay para móviles (Mantenido) */}
       {showChat && (
-        <div 
+        <div
           className={`${styles.chatOverlay} ${styles.chatOpen}`}
           onClick={() => setShowChat(false)}
         />
@@ -651,6 +665,74 @@ const ActiveMeeting: React.FC = () => {
             </button>
           </form>
         </div>
+      )}
+
+      {/* Modal de resumen IA */}
+      {showSummary && summary && (
+        <>
+          <div
+            className={styles.summaryOverlay}
+            onClick={() => setShowSummary(false)}
+          />
+          <div className={styles.summaryModal}>
+            <div className={styles.summaryHeader}>
+              <h2 className={styles.summaryTitle}>Resumen de la Reunión (IA)</h2>
+              <button
+                onClick={() => setShowSummary(false)}
+                className={styles.closeSummaryButton}
+              >
+                <svg
+                  className={styles.closeIcon}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className={styles.summaryContent}>
+              <div className={styles.summarySection}>
+                <h3 className={styles.summarySectionTitle}>Resumen General</h3>
+                <p className={styles.summaryText}>{summary.summary}</p>
+              </div>
+
+              {summary.keyPoints && summary.keyPoints.length > 0 && (
+                <div className={styles.summarySection}>
+                  <h3 className={styles.summarySectionTitle}>Puntos Clave</h3>
+                  <ul className={styles.keyPointsList}>
+                    {summary.keyPoints.map((point: string, index: number) => (
+                      <li key={index} className={styles.keyPoint}>
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {summary.participants && summary.participants.length > 0 && (
+                <div className={styles.summarySection}>
+                  <h3 className={styles.summarySectionTitle}>Participantes</h3>
+                  <p className={styles.summaryText}>
+                    {summary.participants.join(", ")}
+                  </p>
+                </div>
+              )}
+
+              <div className={styles.summaryFooter}>
+                <small className={styles.summaryTimestamp}>
+                  Generado el {new Date(summary.timestamp).toLocaleString('es-ES')}
+                </small>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
