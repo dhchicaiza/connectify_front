@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Meeting.module.scss";
 import { connectToChat, disconnectSocket, getSocket } from "../../sockets/socketManager";
 import useAuthStore from "../../stores/useAuthStore";
-import { leaveMeeting, getMeetingById, joinMeeting } from "../../api/meetings";
-import { fetchUserProfile } from "../../api/user";
+import { leaveMeeting, joinMeeting, generateMeetingSummary } from "../../api/meetings";
+import type { MeetingSummary } from "../../api/meetings";
+import { initWebRTC } from "../../webrtc/webrtc";
+import { useWebRTC } from "../../webrtc/useWebRTC";
+import { useMediaControls } from "../../webrtc/useMediaControls";
 
 /**
  * Interface for chat messages.
@@ -86,14 +89,13 @@ const ActiveMeeting: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   // ⚠️ ELIMINADO: const [participants, setParticipants] = useState<ParticipantDisplay[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   const [isWebRTCInitialized, setIsWebRTCInitialized] = useState(false);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [summary, setSummary] = useState<MeetingSummary | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const localVideoRef = useRef<HTMLVideoElement>(null);
+
 
   const userName = user?.displayName || user?.firstName || "Usuario";
 
@@ -122,22 +124,7 @@ const ActiveMeeting: React.FC = () => {
 
 
   // Fetch current user ID from profile (Mantenido)
-  useEffect(() => { /* ... lógica de fetchUserProfile ... */
-    const getCurrentUserId = async () => {
-      try {
-        const profile = await fetchUserProfile();
-        if (profile?.data?.id) {
-          setCurrentUserId(profile.data.id);
-        }
-      } catch (error) {
-        console.error("Error fetching user profile:", error);
-      }
-    };
 
-    if (user) {
-      getCurrentUserId();
-    }
-  }, [user]);
 
   /**
    * Generates initials from a name string. (Mantenido)
@@ -186,17 +173,8 @@ const ActiveMeeting: React.FC = () => {
         .then(() => {
           console.log("✅ WebRTC initialized successfully");
           setIsWebRTCInitialized(true);
-          // Get and store local stream
-          const stream = getLocalStream();
-          if (stream) {
-            setLocalStream(stream);
-            console.log("📹 Local stream acquired:", {
-              videoTracks: stream.getVideoTracks().length,
-              audioTracks: stream.getAudioTracks().length
-            });
-          }
         })
-        .catch((error) => {
+        .catch((error: any) => {
           console.error("❌ Failed to initialize WebRTC:", error);
         });
     }
@@ -264,7 +242,7 @@ const ActiveMeeting: React.FC = () => {
       }
       disconnectSocket();
     };
-  }, [roomId, navigate, user, fetchParticipants]);
+  }, [roomId, navigate, user, isWebRTCInitialized, userName]);
 
   // ... Auto-scroll, handleExit, y handleSendMessage se mantienen iguales ...
   useEffect(() => {
@@ -272,12 +250,7 @@ const ActiveMeeting: React.FC = () => {
   }, [chatMessages]);
 
   // Connect local stream to video element
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-      console.log("📹 Local video element connected");
-    }
-  }, [localStream]);
+
 
   const handleExit = async () => { /* ... lógica de handleExit ... */
     if (roomId) {
@@ -388,9 +361,19 @@ const ActiveMeeting: React.FC = () => {
             <p className={styles.roomId}>ID: {roomId}</p>
           )}
         </div>
-        <button onClick={handleExit} className={styles.exitButton}>
-          Salir
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button
+            onClick={handleGenerateSummary}
+            className={styles.summaryButton}
+            disabled={isGeneratingSummary || chatMessages.length === 0}
+            title={chatMessages.length === 0 ? "No hay mensajes para resumir" : "Generar resumen con IA"}
+          >
+            {isGeneratingSummary ? "Generando..." : "📝 Resumen IA"}
+          </button>
+          <button onClick={handleExit} className={styles.exitButton}>
+            Salir
+          </button>
+        </div>
       </header>
 
       {/* Contenido principal */}
@@ -400,21 +383,43 @@ const ActiveMeeting: React.FC = () => {
       >
         {/* Grid de participantes */}
         <div className={styles.participantsGrid}>
-          {participants.length === 0 ? (
-            <div className={styles.participantCard}>
+          {/* Local user video */}
+          <div className={`${styles.participantCard} ${isSpeaking ? styles.speaking : ''}`}>
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={styles.videoElement}
+              style={{
+                display: isCameraOff ? 'none' : 'block',
+                transform: 'scaleX(-1)' // Mirror local video
+              }}
+            />
+            {isCameraOff && (
               <div className={styles.participantInitials}>
                 {generateInitials(userName)}
               </div>
-            </div>
-          ) : (
-            participants.map((participant) => (
-              <div key={participant.userId} className={styles.participantCard}>
-                <div className={styles.participantInitials}>
-                  {participant.initials}
-                </div>
-              </div>
-            ))
-          )}
+            )}
+            <div className={styles.nameOverlay}>{userName} (Tú)</div>
+          </div>
+
+          {/* Remote participants */}
+          {Object.entries(remoteStreams).map(([userId, stream]) => {
+            const remoteUser = remoteUsers[userId];
+            // if (!remoteUser) return null; // Optional: filter if user data missing
+
+            return (
+              <RemoteParticipantVideo
+                key={userId}
+                userId={userId}
+                stream={stream}
+                name={remoteUser?.name || "Usuario Remoto"}
+                initials={generateInitials(remoteUser?.name || "UR")}
+                styles={styles}
+              />
+            );
+          })}
         </div>
 
         {/* 💡 Controles: AHORA USAN LAS FUNCIONES DEL HOOK */}
@@ -434,7 +439,7 @@ const ActiveMeeting: React.FC = () => {
           {/* Botón de Silencio */}
           {/* WCAG 1.3.3, 1.4.2: Audio control identified by name, not position or appearance */}
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={toggleMute}
             className={`${styles.controlButton} ${isMuted ? styles.muted : ""}`}
             aria-label={isMuted ? "Activar micrófono" : "Silenciar micrófono"}
             aria-pressed={isMuted}
@@ -485,7 +490,7 @@ const ActiveMeeting: React.FC = () => {
           {/* Botón de Video */}
           {/* WCAG 1.3.3: Camera control identified by name, not position */}
           <button
-            onClick={() => setIsVideoOff(!isVideoOff)}
+            onClick={toggleCamera}
             className={`${styles.controlButton} ${isCameraOff ? styles.videoOff : ""
               }`}
             aria-label={isCameraOff ? "Activar cámara" : "Apagar cámara"}
@@ -702,7 +707,7 @@ const ActiveMeeting: React.FC = () => {
                 <div className={styles.summarySection}>
                   <h3 className={styles.summarySectionTitle}>Puntos Clave</h3>
                   <ul className={styles.keyPointsList}>
-                    {summary.keyPoints.map((point, index) => (
+                    {summary.keyPoints.map((point: string, index: number) => (
                       <li key={index} className={styles.keyPoint}>
                         {point}
                       </li>

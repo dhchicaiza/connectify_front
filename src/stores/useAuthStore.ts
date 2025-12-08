@@ -15,11 +15,11 @@ interface User {
   displayName: string | null;
   email: string | null;
   photoURL?: string | null;
-  
+
   // Propiedades del perfil para el backend
-  firstName?: string; 
-  lastName?: string;  
-  age?: number;       
+  firstName?: string;
+  lastName?: string;
+  age?: number;
 }
 
 /**
@@ -151,8 +151,8 @@ const useAuthStore = create<AuthStore>()((set) => ({
     try {
 
       googleProvider.setCustomParameters({
-            prompt: 'select_account'
-        });
+        prompt: 'select_account'
+      });
       const result = await signInWithPopup(auth, googleProvider);
 
       const firebaseUser = result.user;
@@ -160,28 +160,29 @@ const useAuthStore = create<AuthStore>()((set) => ({
       console.log("Google ID Token obtenido:", googleIdToken);
       const backendResponse = await fetchLoginUserGoogle(googleIdToken);
       console.log("Respuesta del backend tras login con Google:", backendResponse);
-      if (backendResponse.data.token) {
+      if (backendResponse.data && backendResponse.data.token) {
         localStorage.setItem("token", backendResponse.data.token);
-        console.log("Token guardado en localStorage", backendResponse.data.token) ;
+        console.log("Token guardado en localStorage", backendResponse.data.token);
         if (backendResponse.data.user) {
           console.log("Usuario establecido en el store", backendResponse.data.user);
           console.log("Usuario establecido en el store", backendResponse.data.user);
-            const userLogged: User = {
-                // Datos de Firebase
-                displayName: firebaseUser.displayName, 
-                photoURL: firebaseUser.photoURL,
+          const userLogged: User = {
+            // Datos de Firebase
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
 
-                email: backendResponse.data.user.email ,
-                firstName: backendResponse.data.user.firstName, 
-                lastName: backendResponse.data.user.lastName,   
-                age: backendResponse.data.user.age,             
-            };
-            set({ user: userLogged });
-            console.log("Usuario establecido en el store", userLogged);
+            email: backendResponse.data.user.email,
+            firstName: backendResponse.data.user.firstName,
+            lastName: backendResponse.data.user.lastName,
+            age: backendResponse.data.user.age,
+          };
+          set({ user: userLogged });
+          console.log("Usuario establecido en el store", userLogged);
         }
-        
+
       } else {
         console.error("Error en el servidor", backendResponse);
+        // Optional: set an error state in the store if you have one
       }
     } catch (e) {
       console.error("Error iniciando sesión con Google", e);
@@ -196,8 +197,8 @@ const useAuthStore = create<AuthStore>()((set) => ({
     try {
       console.log("ESta pasando po r aqui");
       githubProvider.setCustomParameters({
-            prompt: 'select_account'
-        });
+        prompt: 'select_account'
+      });
       const result = await signInWithPopup(auth, githubProvider);
       const firebaseUser = result.user;
       const githubIdToken = await firebaseUser.getIdToken();
@@ -206,21 +207,21 @@ const useAuthStore = create<AuthStore>()((set) => ({
       console.log("Respuesta del backend tras login con Git:", backendResponse);
       if (backendResponse.data.token) {
         localStorage.setItem("token", backendResponse.data.token);
-        
-        if (backendResponse.data.user) {
-            const userLogged: User = {
-                // Datos de Firebase
-                displayName: firebaseUser.displayName, 
-                photoURL: firebaseUser.photoURL,
 
-                email: backendResponse.data.user.email ,
-                firstName: backendResponse.data.user.firstName, 
-                lastName: backendResponse.data.user.lastName,   
-                age: backendResponse.data.user.age,             
-            };
-            set({ user: userLogged });
+        if (backendResponse.data.user) {
+          const userLogged: User = {
+            // Datos de Firebase
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+
+            email: backendResponse.data.user.email,
+            firstName: backendResponse.data.user.firstName,
+            lastName: backendResponse.data.user.lastName,
+            age: backendResponse.data.user.age,
+          };
+          set({ user: userLogged });
         }
-        
+
       } else {
         console.error("Error en el servidor", backendResponse);
       }
