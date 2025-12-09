@@ -68,12 +68,12 @@ const Footer: React.FC = () => {
             <h3>Reunión</h3>
             <ul>
               <li>
-                <Link to="/create-room" className={styles.link}>
+                <Link to="/meeting" className={styles.link}>
                   Crear Sala
                 </Link>
               </li>
               <li>
-                <Link to="/join-room" className={styles.link}>
+                <Link to="/meeting" className={styles.link}>
                   Unirse a Sala
                 </Link>
               </li>
