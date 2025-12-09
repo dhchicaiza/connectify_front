@@ -8,6 +8,7 @@ import ResetPassword from "../pages/auth/ResetPassword";
 import Profile from "../pages/profile/Profile";
 import Meeting from "../pages/meeting/Meeting";
 import ActiveMeeting from "../pages/meeting/ActiveMeeting";
+import Manual from "../pages/manual/Manual";
 import NotFound from "../pages/NotFound";
 
 /**
@@ -54,6 +55,10 @@ export const routes = [
     {
         path: "/meet/:id",
         element: <ActiveMeeting />,
+    },
+    {
+        path: "/manual",
+        element: <Manual />,
     },
     {
         path: "*",

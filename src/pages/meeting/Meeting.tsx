@@ -9,6 +9,17 @@ import Alert from "../../components/common/Alert";
 /**
  * Meeting page component that allows users to create new meetings
  * or join existing ones by ID.
+ * 
+ * Accessibility Compliance:
+ * - WCAG 2.1.1 Keyboard Accessible: Full keyboard navigation support with arrow keys, Home, End
+ * - WCAG 4.1.2 Name, Role, Value (Level A): All UI components have accessible names, roles, 
+ *   and values programmatically determinable. Buttons include aria-label, aria-busy, 
+ *   aria-disabled, and proper type attributes. Tabs have proper roles, states, and properties.
+ * - WCAG 4.1.3 Status Messages (Level AA): Status messages are presented to assistive 
+ *   technologies without receiving focus via aria-live regions with role="status".
+ * - WCAG 2.4.7 Focus Visible: All interactive elements have visible focus indicators
+ * - WCAG 1.3.1 Info and Relationships: Semantic HTML and ARIA roles maintain structure
+ * - WCAG 2.1.2 No Keyboard Trap: Focus management ensures users can navigate all controls
  */
 const Meeting: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"new" | "join">("new");
@@ -17,58 +28,71 @@ const Meeting: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showRoomIdAlert, setShowRoomIdAlert] = useState(false);
   const [createdRoomId, setCreatedRoomId] = useState("");
+  const [statusMessage, setStatusMessage] = useState<string>("");
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const newTabRef = useRef<HTMLButtonElement>(null);
   const joinTabRef = useRef<HTMLButtonElement>(null);
   const roomIdInputRef = useRef<HTMLInputElement>(null);
+  const statusMessageRef = useRef<HTMLDivElement>(null);
 
   /**
    * Handles creating a new meeting and navigating to it.
+   * WCAG 4.1.2 - Name, Role, Value: Ensures button state is communicated to assistive technologies.
    */
   const handleNewMeeting = async () => {
     if (!user) {
       setError("Debes iniciar sesión para crear una reunión");
+      setStatusMessage("");
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    setStatusMessage("Creando reunión, por favor espera...");
 
     try {
       const meeting = await createMeeting();
       setCreatedRoomId(meeting.id);
+      setStatusMessage("Reunión creada exitosamente");
       setShowRoomIdAlert(true);
     } catch (error: any) {
       setError(error.message || "Error al crear la reunión");
+      setStatusMessage(`Error: ${error.message || "Error al crear la reunión"}`);
       setIsLoading(false);
     }
   };
 
   /**
    * Handles joining an existing meeting by ID.
+   * WCAG 4.1.2 - Name, Role, Value: Ensures form state is communicated to assistive technologies.
    */
   const handleJoinRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!roomId.trim()) {
       setError("Por favor ingresa un ID de reunión");
+      setStatusMessage("");
       return;
     }
 
     if (!user) {
       setError("Debes iniciar sesión para unirte a una reunión");
+      setStatusMessage("");
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    setStatusMessage("Uniéndose a la reunión, por favor espera...");
 
     try {
       await joinMeeting(roomId.trim());
+      setStatusMessage("Uniéndose a la reunión exitosamente");
       navigate(`/active-meeting?roomId=${roomId.trim()}`);
     } catch (error: any) {
       setError(error.message || "Error al unirse a la reunión. Verifica el ID.");
+      setStatusMessage(`Error: ${error.message || "Error al unirse a la reunión. Verifica el ID."}`);
       setIsLoading(false);
     }
   };
@@ -84,10 +108,15 @@ const Meeting: React.FC = () => {
 
   /**
    * Handles copying the room ID to clipboard.
+   * WCAG 4.1.3 - Status Messages: Provides feedback without receiving focus.
    */
   const handleCopyRoomId = () => {
     navigator.clipboard.writeText(createdRoomId);
-    // You could show a toast notification here
+    setStatusMessage("ID de reunión copiado al portapapeles");
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setStatusMessage("");
+    }, 3000);
   };
 
   /**
@@ -130,6 +159,16 @@ const Meeting: React.FC = () => {
   return (
     <div className={styles.meetingPage}>
       <Header />
+      {/* WCAG 4.1.3 - Status Messages: Live region for status updates without focus */}
+      <div
+        ref={statusMessageRef}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {statusMessage}
+      </div>
       <div className={styles.content}>
         <div className={styles.card}>
           {activeTab === "new" ? (
@@ -157,12 +196,17 @@ const Meeting: React.FC = () => {
                 disabled={isLoading}
                 aria-label="Crear una nueva reunión de videoconferencia"
                 aria-describedby="new-meeting-description"
+                aria-busy={isLoading}
+                aria-disabled={isLoading}
+                type="button"
               >
                 <svg
                   className={styles.cameraIcon}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
                 >
                   <path
                     strokeLinecap="round"
@@ -223,12 +267,16 @@ const Meeting: React.FC = () => {
                   className={styles.actionButton}
                   disabled={isLoading}
                   aria-label="Unirse a la reunión con el ID ingresado"
+                  aria-busy={isLoading}
+                  aria-disabled={isLoading}
                 >
                   <svg
                     className={styles.cameraIcon}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    focusable="false"
                   >
                     <path
                       strokeLinecap="round"
@@ -243,6 +291,7 @@ const Meeting: React.FC = () => {
             </div>
           )}
 
+          {/* WCAG 4.1.2 - Name, Role, Value: Tabs have proper roles, states, and properties */}
           <div className={styles.tabButtons} role="tablist" aria-label="Opciones de reunión">
             <button
               ref={newTabRef}
@@ -252,8 +301,10 @@ const Meeting: React.FC = () => {
               role="tab"
               aria-selected={activeTab === "new"}
               aria-controls="new-meeting-panel"
+              aria-label="Crear nueva reunión"
               id="new-tab"
               tabIndex={activeTab === "new" ? 0 : -1}
+              type="button"
             >
               Nueva Reunión
             </button>
@@ -265,8 +316,10 @@ const Meeting: React.FC = () => {
               role="tab"
               aria-selected={activeTab === "join"}
               aria-controls="join-meeting-panel"
+              aria-label="Unirse a una sala existente"
               id="join-tab"
               tabIndex={activeTab === "join" ? 0 : -1}
+              type="button"
             >
               Unirse a Sala
             </button>
@@ -300,6 +353,7 @@ const Meeting: React.FC = () => {
                 cursor: "pointer",
               }}
               aria-label="Copiar el ID de la reunión al portapapeles"
+              type="button"
             >
               Copiar ID
             </button>
